@@ -96,9 +96,9 @@ I5 前端 console 默认跑在 `http://127.0.0.1:5173/`，同源访问 `/` 和 `
 
 在 `task up` + `task run` + `task frontend:dev` 之后，用浏览器走完（邀请 token 优先从 Mailpit `http://127.0.0.1:8025/` 复制，或从 `outbox_message`）：
 
-1. **Operator**：CLI 取 setup token → Setup begin/complete → Operator login（AccessToken 仅内存 Session 卡可见）
-2. **Tenant**：Create tenant → 记下 outbox 里的 Owner invite token
-3. **Owner**：Accept invite（begin/complete + TOTP）→ User login → Select tenant → Invite member（`MEMBER`）
+1. **Operator**：CLI 取 setup token → Setup begin/complete（默认**仅密码**）→ Operator login
+2. **Tenant**：Create tenant → 记下 outbox / Mailpit 里的 Owner invite token
+3. **Owner**：Accept invite（begin/complete，默认**无 TOTP**）→ User login → Select tenant → Invite member（`MEMBER`）
 4. **Member**：Clear / Log out → 用 Member invite 走 Accept → User login → Select tenant → Demo：`demo:read` = **200**，`demo:admin` = **403**
 5. Owner/Admin 同页再调 Demo，两边均为 **200**；可选点 Refresh session / Log out
 
@@ -117,11 +117,57 @@ task operator:setup-token
   -Dspring-boot.run.main-class=io.rosecloud.iam.operator.OperatorSetupCli
 ```
 
-然后 HTTP：`POST /api/operator/setup/begin` → `complete` → `login`；JWKS：`GET /api/.well-known/jwks.json`（见 OpenAPI）。
+然后 HTTP：`POST /api/operator/setup/begin` → `complete` → `login`（**MfaFeature 默认关，不必 `totpCode`**）；JWKS：`GET /api/.well-known/jwks.json`（见 OpenAPI）。
 
 本机明文 HTTP 浏览器联调时，把 `rosecloud.iam.cookies.secure` 设为 `false`（默认 `true`）。
 
-用户登录失败按 **email + client IP** 做渐进冷却（`rosecloud.iam.login-rate-limit.*`，默认 5 次失败后起 30s，上限 15m）；返回 `429` + `Retry-After`，不是永久锁定。测试里可用更短阈值（见 `LoginRateLimitIT`）。
+用户登录与 FactorChallenge（含 RecoveryCode）失败按 **principal 标识 + client IP** 共用渐进冷却（`rosecloud.iam.login-rate-limit.*`，默认 5 次失败后起 30s，上限 15m）；返回 `429` + `Retry-After`，不是永久锁定。测试里可用更短阈值（见 `LoginRateLimitIT`）。
+
+## Optional MFA (MfaFeature)
+
+平台开关默认 **false**（`platform_setting.mfa_feature`）。Operator 在 **StepUp** 窗口内可翻转：
+
+```bash
+curl http://127.0.0.1:8080/api/operator/mfa-feature \
+  -H "Authorization: Bearer <operator-access-token>"
+
+curl -X PUT http://127.0.0.1:8080/api/operator/mfa-feature \
+  -H "Authorization: Bearer <operator-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled":true,"reason":"enable platform MFA for demo"}'
+```
+
+开关打开后自愿绑定 TOTP（自助 bind **不**强制 StepUp；再生 RecoveryCode / 重置他人需 StepUp）：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/operator/factors/totp/begin \
+  -H "Authorization: Bearer <operator-access-token>"
+
+curl -X POST http://127.0.0.1:8080/api/operator/factors/totp/complete \
+  -H "Authorization: Bearer <operator-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"totpCode":"123456"}'
+# → recoveryCodes（仅此一次完整展示）；相关 LoginSession 会吊销，需重新登录
+```
+
+有 Binding 时登录先返回 `FACTOR_CHALLENGE_REQUIRED`，再完成挑战：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/operator/factor-challenge \
+  -H "Content-Type: application/json" \
+  -d '{"challengeId":"<uuid>","bindingId":"<binding-id>","totpCode":"123456"}'
+# 或使用 recoveryCode 代替 totpCode / bindingId
+```
+
+会话内 StepUp（5m，绑 JWT `sid`）：`POST /api/operator/step-up` 与 `POST /api/sessions/step-up`；有 Binding 时同样先 FactorChallenge，再 `.../step-up/factor-challenge`。
+
+灾难：全部 Operator 丢失 MFA 恢复能力时，**仅本机 CLI**（不经 HTTP）：
+
+```bash
+task operator:mfa-reset OPERATOR_ID=<operator-uuid> REASON='lost authenticators'
+```
+
+User 侧：`/api/me/factors/*`、`/api/sessions/factor-challenge`、`/api/sessions/step-up*`。契约以 `openapi/openapi.yaml` 为准。
 
 ## Tenant owner invite (I2)
 

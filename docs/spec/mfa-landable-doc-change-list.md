@@ -63,9 +63,10 @@ Vocabulary: `CONTEXT.md` — MfaFeature / Factor / FactorBinding / FactorChallen
 
 | Doc | Change | Status | Owner |
 | --- | --- | --- | --- |
-| `docs/architecture.md` | Package ownership: Factor / FactorBinding / catalog live under `identity` (or note `operator` shares SPI); sequence diagram MFA gate → MfaFeature | Ready | Architecture |
-| `README.md` | One-line: MFA optional via MfaFeature; TOTP as first Factor | Ready | Docs |
-| `docs/research/mfa-totp-coupling.md` | Keep as evidence; add “superseded by landable revision” pointer when V1 lands | Ready | Spec |
+| `docs/architecture.md` | Package ownership: Factor / FactorBinding / catalog live under `identity` (or note `operator` shares SPI); sequence diagram MFA gate → MfaFeature | Done | Architecture |
+| `README.md` | One-line: MFA optional via MfaFeature; TOTP as first Factor | Done | Docs |
+| `docs/local-dev.md` | Optional MFA curl / CLI reset / password-only checklist (MfaFeature default off) | Done | Docs |
+| `docs/research/mfa-totp-coupling.md` | Keep as evidence; add “superseded by landable revision” pointer when V1 lands | Out（文件未入库） | Spec |
 | `docs/spec/prd-thin-slice.md` | **Do not** rewrite thin-slice DoD (map Out of scope) | Out | — |
 | `docs/plans/0001-thin-slice.md` | **Do not** revise retrospective DoD; optional single “forward V1 diverges: …” footnote only if writers want a pointer | Out | — |
 | `docs/adr/0002-…` | Optional one-line cross-link that global TOTP becomes FactorBinding under User | Ready | Architecture |
