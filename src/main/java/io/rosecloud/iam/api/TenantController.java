@@ -1,7 +1,10 @@
 package io.rosecloud.iam.api;
 
-import io.rosecloud.iam.access.TenantPermissionGuard;
 import io.rosecloud.iam.access.OperatorPrincipal;
+import io.rosecloud.iam.access.Permissions;
+import io.rosecloud.iam.access.StepUpGate;
+import io.rosecloud.iam.access.TenantPermissionGuard;
+import io.rosecloud.iam.identity.GlobalTotpPolicyService;
 import io.rosecloud.iam.tenancy.InvitationAcceptanceService;
 import io.rosecloud.iam.tenancy.TenantInvitationService;
 import jakarta.validation.Valid;
@@ -9,8 +12,8 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,14 +25,20 @@ class TenantController {
   private final TenantInvitationService tenantInvitationService;
   private final InvitationAcceptanceService invitationAcceptanceService;
   private final TenantPermissionGuard tenantPermissionGuard;
+  private final StepUpGate stepUpGate;
+  private final GlobalTotpPolicyService globalTotpPolicyService;
 
   TenantController(
       TenantInvitationService tenantInvitationService,
       InvitationAcceptanceService invitationAcceptanceService,
-      TenantPermissionGuard tenantPermissionGuard) {
+      TenantPermissionGuard tenantPermissionGuard,
+      StepUpGate stepUpGate,
+      GlobalTotpPolicyService globalTotpPolicyService) {
     this.tenantInvitationService = tenantInvitationService;
     this.invitationAcceptanceService = invitationAcceptanceService;
     this.tenantPermissionGuard = tenantPermissionGuard;
+    this.stepUpGate = stepUpGate;
+    this.globalTotpPolicyService = globalTotpPolicyService;
   }
 
   @PostMapping("/operator/tenants")
@@ -72,7 +81,8 @@ class TenantController {
       @PathVariable UUID tenantId,
       @Valid @RequestBody CreateMemberInvitationRequest request) {
     var principal =
-        tenantPermissionGuard.requirePermission(authentication, tenantId, "tenant:invite");
+        tenantPermissionGuard.requirePermission(
+            authentication, tenantId, Permissions.TENANT_INVITE.code());
     TenantInvitationService.CreateMemberInvitationResult result =
         tenantInvitationService.createMemberInvitation(
             principal.userId(), tenantId, request.email(), request.roleCode());
@@ -83,8 +93,10 @@ class TenantController {
   @PostMapping("/tenants/{tenantId}/users/{userId}/totp/reset")
   ResponseEntity<Void> rejectTenantTotpReset(
       Authentication authentication, @PathVariable UUID tenantId, @PathVariable UUID userId) {
-    tenantPermissionGuard.requirePermission(authentication, tenantId, "tenant:invite");
-    throw new io.rosecloud.iam.tenancy.TenancyException(
-        HttpStatus.FORBIDDEN, "tenant context cannot reset global TOTP");
+    tenantPermissionGuard.requirePermission(
+        authentication, tenantId, Permissions.TENANT_INVITE.code());
+    stepUpGate.requireRecentPasswordAndTotp(authentication);
+    globalTotpPolicyService.rejectTenantScopedReset(tenantId, userId);
+    return ResponseEntity.noContent().build();
   }
 }

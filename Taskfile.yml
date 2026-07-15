@@ -52,11 +52,13 @@ tasks:
       - npm run generate:api
 
   typecheck:
-    desc: Generate API client and typecheck frontend
+    desc: Generate API client, assert no OpenAPI drift, typecheck frontend
     dir: frontend
     deps: [frontend:install]
     cmds:
       - npm run generate:api
+      - git ls-files --error-unmatch src/generated/openapi.ts
+      - git diff --exit-code -- src/generated/openapi.ts
       - npm run typecheck
 
   run:

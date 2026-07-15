@@ -74,7 +74,7 @@ API 起来后另开终端签发 setup token（成功打印到 stdout；已 ACTIV
 | Task | 作用 |
 | --- | --- |
 | `task test` | 后端测试（Testcontainers） |
-| `task typecheck` | OpenAPI 生成 + 前端 typecheck + Storage token guard |
+| `task typecheck` | OpenAPI 生成 + **committed 客户端无 diff** + typecheck + Storage token guard |
 | `task ci` | 本地 CI 门禁 |
 | `task down` | 停 Compose |
 

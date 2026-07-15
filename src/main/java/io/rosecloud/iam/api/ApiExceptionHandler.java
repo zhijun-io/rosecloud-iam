@@ -1,6 +1,7 @@
 package io.rosecloud.iam.api;
 
 import io.rosecloud.iam.access.AuthorizationException;
+import io.rosecloud.iam.identity.GlobalTotpPolicyException;
 import io.rosecloud.iam.identity.LoginRateLimitedException;
 import io.rosecloud.iam.identity.UserAuthenticationException;
 import io.rosecloud.iam.operator.OperatorAuthenticationException;
@@ -57,6 +58,11 @@ class ApiExceptionHandler {
 
   @ExceptionHandler(AuthorizationException.class)
   ResponseEntity<Map<String, String>> handleAuthorizationRejected(AuthorizationException exception) {
+    return ResponseEntity.status(exception.status()).body(Map.of("error", exception.getMessage()));
+  }
+
+  @ExceptionHandler(GlobalTotpPolicyException.class)
+  ResponseEntity<Map<String, String>> handleGlobalTotpPolicy(GlobalTotpPolicyException exception) {
     return ResponseEntity.status(exception.status()).body(Map.of("error", exception.getMessage()));
   }
 

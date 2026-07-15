@@ -142,7 +142,7 @@ public class TenantInvitationService {
 
   private String normalizeInvitableRoleCode(String roleCode) {
     String normalizedRoleCode = roleCode.trim().toUpperCase(Locale.ROOT);
-    if (!builtinRolePermissions.isKnownRole(normalizedRoleCode) || OWNER_ROLE.equals(normalizedRoleCode)) {
+    if (!builtinRolePermissions.isAssignableMemberRole(normalizedRoleCode)) {
       throw new TenancyException(HttpStatus.BAD_REQUEST, "roleCode must be ADMIN or MEMBER");
     }
     return normalizedRoleCode;

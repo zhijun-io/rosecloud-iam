@@ -1,5 +1,6 @@
 package io.rosecloud.iam.api;
 
+import io.rosecloud.iam.access.Permissions;
 import io.rosecloud.iam.access.TenantPermissionGuard;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -19,13 +20,13 @@ class DemoController {
 
   @GetMapping("/read")
   ResponseEntity<DemoPermissionResponse> read(Authentication authentication) {
-    tenantPermissionGuard.requirePermission(authentication, "demo:read");
-    return ResponseEntity.ok(new DemoPermissionResponse("demo:read"));
+    tenantPermissionGuard.requirePermission(authentication, Permissions.DEMO_READ.code());
+    return ResponseEntity.ok(new DemoPermissionResponse(Permissions.DEMO_READ.code()));
   }
 
   @GetMapping("/admin")
   ResponseEntity<DemoPermissionResponse> admin(Authentication authentication) {
-    tenantPermissionGuard.requirePermission(authentication, "demo:admin");
-    return ResponseEntity.ok(new DemoPermissionResponse("demo:admin"));
+    tenantPermissionGuard.requirePermission(authentication, Permissions.DEMO_ADMIN.code());
+    return ResponseEntity.ok(new DemoPermissionResponse(Permissions.DEMO_ADMIN.code()));
   }
 }

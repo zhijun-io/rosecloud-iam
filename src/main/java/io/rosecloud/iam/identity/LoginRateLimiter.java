@@ -9,8 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Component;
 
 /**
- * In-memory progressive cooldown keyed by normalized email + client IP.
- * Not a permanent lock — counters expire after the cooldown window.
+ * In-memory progressive cooldown keyed by User login identifier (verified email) + client IP
+ * (iam-v1 §5.4). Not a permanent lock — counters expire after the cooldown window.
  */
 @Component
 public class LoginRateLimiter {
@@ -62,11 +62,11 @@ public class LoginRateLimiter {
     entries.remove(key(email, clientIp));
   }
 
-  private static String key(String email, String clientIp) {
-    String normalizedEmail =
-        email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+  private static String key(String loginIdentifier, String clientIp) {
+    String normalizedIdentifier =
+        loginIdentifier == null ? "" : loginIdentifier.trim().toLowerCase(Locale.ROOT);
     String ip = clientIp == null || clientIp.isBlank() ? "unknown" : clientIp.trim();
-    return normalizedEmail + "|" + ip;
+    return normalizedIdentifier + "|" + ip;
   }
 
   private record Entry(int failures, Instant blockedUntil) {}

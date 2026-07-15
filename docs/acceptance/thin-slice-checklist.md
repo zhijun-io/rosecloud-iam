@@ -20,7 +20,7 @@
 | Item | Proof |
 | --- | --- |
 | Failed login uses generic message + audit | `UserSessionIT.loginFailureUsesGenericMessageAndAuditsFailure` |
-| Login progressive cooldown by email + IP (not permanent lock) | `LoginRateLimitIT` |
+| Login progressive cooldown by login identifier (email) + IP (not permanent lock) | `LoginRateLimitIT` |
 | Suspended membership cannot mint new TenantContext | `UserSessionIT.suspendedMembershipCannotBeSelectedForTenantContext` |
 | Stale AccessToken works until short TTL expires after suspend | `StaleAccessTokenIT.suspendedMembershipKeepsExistingTenantTokenUntilAccessTtlExpires` |
 | Stale AccessToken works until short TTL expires after logout (refresh revoked) | `StaleAccessTokenIT.logoutRevokesRefreshButAccessTokenWorksUntilAccessTtlExpires` |
@@ -30,6 +30,7 @@
 | Member cannot self-elevate / invite | `MemberInviteRbacIT` |
 | AccessToken not in `localStorage` / `sessionStorage` | `npm run smoke:storage` / `task typecheck` |
 | Refresh cookie Secure + HttpOnly (config) | `application.yml` + RefreshCookieFactory tests/path |
+| StepUp call-site hook on tenant TOTP reset (no token issuance yet) | `StepUpGate` + `GlobalTotpPolicyService` |
 
 ## AuditEvent coverage (thin slice)
 
