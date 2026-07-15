@@ -6,25 +6,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.eatthepath.otp.TimeBasedOneTimePasswordGenerator;
 import io.rosecloud.iam.operator.OperatorSetupCliRunner;
-import io.rosecloud.iam.shared.Base32Encoding;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
-import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
 
@@ -38,22 +30,15 @@ class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
     jdbcTemplate.update("delete from operator_setup_token");
     jdbcTemplate.update("delete from platform_operator");
     jdbcTemplate.update("delete from audit_event");
+    jdbcTemplate.update(
+        "update platform_setting set value_bool = false, updated_at = now() where setting_key = 'mfa_feature'");
   }
 
   @Test
   void setupAndLoginHappyPathWritesAuditRows() throws Exception {
     String setupToken = issueSetupToken();
 
-    SetupBeginPayload beginResponse =
-        beginSetup(setupToken, """
-            {
-              "setupToken": "%s",
-              "password": "correct horse battery staple"
-            }
-            """.formatted(setupToken));
-
-    String totpSecret = beginResponse.totpSecret();
-    String totpCode = currentTotpCode(totpSecret);
+    beginSetup(setupToken);
 
     mockMvc
         .perform(
@@ -62,11 +47,10 @@ class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
                 .content(
                     """
                     {
-                      "setupToken": "%s",
-                      "totpCode": "%s"
+                      "setupToken": "%s"
                     }
                     """
-                        .formatted(setupToken, totpCode)))
+                        .formatted(setupToken)))
         .andExpect(status().isNoContent());
 
     mockMvc
@@ -76,8 +60,7 @@ class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
                 .content(
                     """
                     {
-                      "password": "correct horse battery staple",
-                      "totpCode": "000000"
+                      "password": "wrong-password-value-here"
                     }
                     """))
         .andExpect(status().isUnauthorized());
@@ -89,11 +72,9 @@ class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
                 .content(
                     """
                     {
-                      "password": "correct horse battery staple",
-                      "totpCode": "%s"
+                      "password": "correct horse battery staple"
                     }
-                    """
-                        .formatted(currentTotpCode(totpSecret))))
+                    """))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.tokenType").value("Bearer"))
         .andExpect(jsonPath("$.expiresIn").value(300))
@@ -119,16 +100,7 @@ class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
   @Test
   void secondBareInitFailsAfterActivation() throws Exception {
     String setupToken = issueSetupToken();
-    SetupBeginPayload begin =
-        beginSetup(
-            setupToken,
-            """
-            {
-              "setupToken": "%s",
-              "password": "correct horse battery staple"
-            }
-            """
-                .formatted(setupToken));
+    beginSetup(setupToken);
     mockMvc
         .perform(
             post("/api/operator/setup/complete")
@@ -136,11 +108,10 @@ class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
                 .content(
                     """
                     {
-                      "setupToken": "%s",
-                      "totpCode": "%s"
+                      "setupToken": "%s"
                     }
                     """
-                        .formatted(setupToken, currentTotpCode(begin.totpSecret()))))
+                        .formatted(setupToken)))
         .andExpect(status().isNoContent());
 
     ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -158,27 +129,10 @@ class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
   @Test
   void abandonedSetupCanBeRetriedWithFreshCliToken() throws Exception {
     String abandoned = issueSetupToken();
-    beginSetup(
-        abandoned,
-        """
-        {
-          "setupToken": "%s",
-          "password": "correct horse battery staple"
-        }
-        """
-            .formatted(abandoned));
+    beginSetup(abandoned);
 
     String fresh = issueSetupToken();
-    SetupBeginPayload begin =
-        beginSetup(
-            fresh,
-            """
-            {
-              "setupToken": "%s",
-              "password": "correct horse battery staple"
-            }
-            """
-                .formatted(fresh));
+    beginSetup(fresh);
     mockMvc
         .perform(
             post("/api/operator/setup/complete")
@@ -186,23 +140,17 @@ class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
                 .content(
                     """
                     {
-                      "setupToken": "%s",
-                      "totpCode": "%s"
+                      "setupToken": "%s"
                     }
                     """
-                        .formatted(fresh, currentTotpCode(begin.totpSecret()))))
+                        .formatted(fresh)))
         .andExpect(status().isNoContent());
   }
 
   @Test
-  void totpIsRequiredForCompletionAndLogin() throws Exception {
+  void passwordOnlySetupDoesNotRequireTotp() throws Exception {
     String setupToken = issueSetupToken();
-    beginSetup(setupToken, """
-        {
-          "setupToken": "%s",
-          "password": "correct horse battery staple"
-        }
-        """.formatted(setupToken));
+    beginSetup(setupToken);
 
     mockMvc
         .perform(
@@ -215,7 +163,7 @@ class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
                     }
                     """
                         .formatted(setupToken)))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isNoContent());
 
     mockMvc
         .perform(
@@ -227,7 +175,8 @@ class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
                       "password": "correct horse battery staple"
                     }
                     """))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accessToken").isString());
   }
 
   private String issueSetupToken() {
@@ -239,36 +188,21 @@ class OperatorBootstrapIT extends AbstractPostgresIntegrationTest {
     return setupToken;
   }
 
-  private SetupBeginPayload beginSetup(String setupToken, String body) throws Exception {
-    MvcResult result =
-        mockMvc
-            .perform(post("/api/operator/setup/begin").contentType(MediaType.APPLICATION_JSON).content(body))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.totpSecret").isString())
-            .andExpect(jsonPath("$.otpauthUrl").value(org.hamcrest.Matchers.containsString("otpauth://totp/")))
-            .andReturn();
-
-    return new SetupBeginPayload(
-        extractJsonField(result.getResponse().getContentAsString(), "totpSecret"),
-        extractJsonField(result.getResponse().getContentAsString(), "otpauthUrl"));
+  private void beginSetup(String setupToken) throws Exception {
+    mockMvc
+        .perform(
+            post("/api/operator/setup/begin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "setupToken": "%s",
+                      "password": "correct horse battery staple"
+                    }
+                    """
+                        .formatted(setupToken)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totpSecret").doesNotExist())
+        .andExpect(jsonPath("$.otpauthUrl").doesNotExist());
   }
-
-  private String currentTotpCode(String base32Secret)
-      throws NoSuchAlgorithmException, InvalidKeyException {
-    TimeBasedOneTimePasswordGenerator generator =
-        new TimeBasedOneTimePasswordGenerator(Duration.ofSeconds(30), 6);
-    SecretKeySpec key = new SecretKeySpec(Base32Encoding.decode(base32Secret), "HmacSHA1");
-    return String.format("%06d", generator.generateOneTimePassword(key, Instant.now()));
-  }
-
-  private String extractJsonField(String body, String fieldName) {
-    String marker = "\"" + fieldName + "\":\"";
-    int start = body.indexOf(marker);
-    assertThat(start).isGreaterThanOrEqualTo(0);
-    int valueStart = start + marker.length();
-    int valueEnd = body.indexOf('"', valueStart);
-    return body.substring(valueStart, valueEnd);
-  }
-
-  private record SetupBeginPayload(String totpSecret, String otpauthUrl) {}
 }

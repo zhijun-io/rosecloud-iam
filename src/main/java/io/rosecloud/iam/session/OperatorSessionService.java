@@ -39,9 +39,10 @@ public class OperatorSessionService {
     secureRandom.nextBytes(rawRefreshTokenBytes);
     String refreshToken = Base64.getUrlEncoder().withoutPadding().encodeToString(rawRefreshTokenBytes);
 
-    Instant expiresAt = Instant.now(clock).plus(properties.refreshTokenTtl());
+    Instant now = Instant.now(clock);
+    Instant expiresAt = now.plus(properties.refreshTokenTtl());
     loginSessionRepository.save(
-        LoginSession.operator(operatorId, sha256Hasher.hash(refreshToken), expiresAt));
+        LoginSession.operator(operatorId, sha256Hasher.hash(refreshToken), expiresAt, now));
 
     JwtIssuer.IssuedAccessToken accessToken = jwtIssuer.issueOperatorToken(operatorId);
     return new OperatorLoginResult(

@@ -115,14 +115,10 @@ class MemberInviteRbacIT extends AbstractIamApiIntegrationTest {
                     """
                     {
                       "token": "%s",
-                      "password": "%s",
-                      "totpCode": "%s"
+                      "password": "%s"
                     }
                     """
-                        .formatted(
-                            rejoinToken,
-                            member.password(),
-                            currentTotpCode(member.totpSecret()))))
+                        .formatted(rejoinToken, member.password())))
         .andExpect(status().isNoContent());
 
     UUID rejoinedMembershipId =
@@ -219,23 +215,19 @@ class MemberInviteRbacIT extends AbstractIamApiIntegrationTest {
 
   private AcceptedMemberFixture acceptNewInvitation(
       UUID tenantId, String invitationToken, String email, String password) throws Exception {
-    MvcResult beginResult =
-        mockMvc
-            .perform(
-                post("/api/invitations/accept/begin")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(
-                        """
-                        {
-                          "token": "%s",
-                          "password": "%s"
-                        }
-                        """
-                            .formatted(invitationToken, password)))
-            .andExpect(status().isOk())
-            .andReturn();
-
-    String totpSecret = extractJsonField(beginResult.getResponse().getContentAsString(), "totpSecret");
+    mockMvc
+        .perform(
+            post("/api/invitations/accept/begin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "token": "%s",
+                      "password": "%s"
+                    }
+                    """
+                        .formatted(invitationToken, password)))
+        .andExpect(status().isOk());
 
     mockMvc
         .perform(
@@ -244,11 +236,10 @@ class MemberInviteRbacIT extends AbstractIamApiIntegrationTest {
                 .content(
                     """
                     {
-                      "token": "%s",
-                      "totpCode": "%s"
+                      "token": "%s"
                     }
                     """
-                        .formatted(invitationToken, currentTotpCode(totpSecret))))
+                        .formatted(invitationToken)))
         .andExpect(status().isNoContent());
 
     return new AcceptedMemberFixture(
@@ -257,7 +248,7 @@ class MemberInviteRbacIT extends AbstractIamApiIntegrationTest {
         latestMembershipIdForEmailAndTenant(email, tenantId),
         email,
         password,
-        totpSecret);
+        null);
   }
 
   private void assertDemoAccess(String tenantAccessToken, int readStatus, int adminStatus)

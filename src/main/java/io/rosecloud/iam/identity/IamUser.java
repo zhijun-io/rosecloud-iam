@@ -27,11 +27,17 @@ public class IamUser {
   @Column(name = "password_hash", nullable = false, length = 255)
   private String passwordHash;
 
-  @Column(name = "totp_secret_ciphertext", nullable = false)
+  @Column(name = "totp_secret_ciphertext")
   private String totpSecretCiphertext;
 
-  @Column(name = "totp_secret_key_id", nullable = false, length = 64)
+  @Column(name = "totp_secret_key_id", length = 64)
   private String totpSecretKeyId;
+
+  @Column(name = "pending_totp_secret_ciphertext")
+  private String pendingTotpSecretCiphertext;
+
+  @Column(name = "pending_totp_secret_key_id", length = 64)
+  private String pendingTotpSecretKeyId;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 32)
@@ -83,13 +89,56 @@ public class IamUser {
     return status;
   }
 
-  public void replacePendingEnrollment(
-      String passwordHash, String totpSecretCiphertext, String totpSecretKeyId) {
+  public boolean hasTotpBinding() {
+    return totpSecretCiphertext != null
+        && !totpSecretCiphertext.isBlank()
+        && totpSecretKeyId != null
+        && !totpSecretKeyId.isBlank();
+  }
+
+  public void replacePendingEnrollment(String passwordHash) {
     this.passwordHash = passwordHash;
-    this.totpSecretCiphertext = totpSecretCiphertext;
-    this.totpSecretKeyId = totpSecretKeyId;
+    this.totpSecretCiphertext = null;
+    this.totpSecretKeyId = null;
     this.status = UserStatus.PENDING_TOTP;
     this.emailVerifiedAt = null;
+  }
+
+  public void bindTotp(String totpSecretCiphertext, String totpSecretKeyId) {
+    this.totpSecretCiphertext = totpSecretCiphertext;
+    this.totpSecretKeyId = totpSecretKeyId;
+    clearPendingTotp();
+  }
+
+  public void beginPendingTotp(String ciphertext, String keyId) {
+    this.pendingTotpSecretCiphertext = ciphertext;
+    this.pendingTotpSecretKeyId = keyId;
+  }
+
+  public String pendingTotpSecretCiphertext() {
+    return pendingTotpSecretCiphertext;
+  }
+
+  public String pendingTotpSecretKeyId() {
+    return pendingTotpSecretKeyId;
+  }
+
+  public boolean hasPendingTotp() {
+    return pendingTotpSecretCiphertext != null
+        && !pendingTotpSecretCiphertext.isBlank()
+        && pendingTotpSecretKeyId != null
+        && !pendingTotpSecretKeyId.isBlank();
+  }
+
+  public void clearPendingTotp() {
+    this.pendingTotpSecretCiphertext = null;
+    this.pendingTotpSecretKeyId = null;
+  }
+
+  public void clearTotp() {
+    this.totpSecretCiphertext = null;
+    this.totpSecretKeyId = null;
+    clearPendingTotp();
   }
 
   public void activate() {

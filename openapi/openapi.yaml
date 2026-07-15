@@ -48,16 +48,18 @@ paths:
               $ref: "#/components/schemas/OperatorLoginRequest"
       responses:
         "200":
-          description: Access token with refresh cookie
+          description: Access token, or FactorChallengeRequired when MfaFeature is on and a binding exists
           headers:
             Set-Cookie:
               schema:
                 type: string
-              description: Refresh token cookie named rc_refresh
+              description: Refresh token cookie named rc_refresh (omitted when challenge required)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OperatorLoginResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/OperatorLoginResponse"
+                  - $ref: "#/components/schemas/FactorChallengeRequiredResponse"
   /sessions/login:
     post:
       operationId: userLogin
@@ -79,7 +81,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AccessTokenResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/AccessTokenResponse"
+                  - $ref: "#/components/schemas/FactorChallengeRequiredResponse"
         "401":
           description: Generic login rejection
         "429":
@@ -355,6 +359,210 @@ paths:
                     items:
                       type: object
                 required: [keys]
+
+  /operator/factor-challenge:
+    post:
+      operationId: operatorFactorChallenge
+      summary: Complete operator FactorChallenge and issue session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FactorChallengeRequest"
+      responses:
+        "200":
+          description: Access token with refresh cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorLoginResponse"
+  /operator/mfa-feature:
+    get:
+      operationId: getMfaFeature
+      summary: Read platform MfaFeature flag
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current flag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaFeatureResponse"
+    put:
+      operationId: setMfaFeature
+      summary: Flip platform MfaFeature (requires StepUp)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaFeatureRequest"
+      responses:
+        "200":
+          description: Updated flag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MfaFeatureResponse"
+  /operator/factors/totp/begin:
+    post:
+      operationId: operatorFactorTotpBegin
+      summary: Begin voluntary Operator TOTP FactorBinding enrollment
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Enrollment material
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FactorEnrollmentBeginResponse"
+  /operator/factors/totp/complete:
+    post:
+      operationId: operatorFactorTotpComplete
+      summary: Complete Operator TOTP FactorBinding enrollment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FactorEnrollmentCompleteRequest"
+      responses:
+        "200":
+          description: One-time recovery codes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryCodesResponse"
+  /operator/factors/totp:
+    delete:
+      operationId: operatorFactorTotpRevoke
+      summary: Revoke Operator TOTP FactorBinding
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Revoked
+  /operator/factors/recovery-codes:
+    post:
+      operationId: operatorRecoveryCodesRegenerate
+      summary: Regenerate Operator recovery codes (requires StepUp)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: One-time recovery codes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryCodesResponse"
+  /operator/users/{userId}/mfa-reset:
+    post:
+      operationId: operatorResetUserMfa
+      summary: Operator reset of a user's FactorBinding and RecoveryCode
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaResetRequest"
+      responses:
+        "204":
+          description: Credentials reset
+  /sessions/factor-challenge:
+    post:
+      operationId: userFactorChallenge
+      summary: Complete user FactorChallenge and issue session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FactorChallengeRequest"
+      responses:
+        "200":
+          description: Access token with refresh cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessTokenResponse"
+  /me/factors/totp/begin:
+    post:
+      operationId: meFactorTotpBegin
+      summary: Begin voluntary User TOTP FactorBinding enrollment
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Enrollment material
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FactorEnrollmentBeginResponse"
+  /me/factors/totp/complete:
+    post:
+      operationId: meFactorTotpComplete
+      summary: Complete User TOTP FactorBinding enrollment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FactorEnrollmentCompleteRequest"
+      responses:
+        "200":
+          description: One-time recovery codes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryCodesResponse"
+  /me/factors/totp:
+    delete:
+      operationId: meFactorTotpRevoke
+      summary: Revoke User TOTP FactorBinding
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Revoked
+  /me/factors/recovery-codes:
+    post:
+      operationId: meRecoveryCodesRegenerate
+      summary: Regenerate User recovery codes (requires StepUp)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: One-time recovery codes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoveryCodesResponse"
 components:
   securitySchemes:
     bearerAuth:
@@ -376,9 +584,11 @@ components:
       properties:
         totpSecret:
           type: string
+          nullable: true
         otpauthUrl:
           type: string
-      required: [totpSecret, otpauthUrl]
+          nullable: true
+      description: Password-only setup returns empty object; totp fields only when enrollment material is issued
     OperatorSetupCompleteRequest:
       type: object
       properties:
@@ -386,7 +596,7 @@ components:
           type: string
         totpCode:
           type: string
-      required: [setupToken, totpCode]
+      required: [setupToken]
     OperatorLoginRequest:
       type: object
       properties:
@@ -394,7 +604,7 @@ components:
           type: string
         totpCode:
           type: string
-      required: [password, totpCode]
+      required: [password]
     OperatorLoginResponse:
       type: object
       properties:
@@ -417,7 +627,7 @@ components:
         totpCode:
           type: string
           pattern: '^\d{6}$'
-      required: [email, password, totpCode]
+      required: [email, password]
     AccessTokenResponse:
       type: object
       properties:
@@ -482,9 +692,11 @@ components:
       properties:
         totpSecret:
           type: string
+          nullable: true
         otpauthUrl:
           type: string
-      required: [totpSecret, otpauthUrl]
+          nullable: true
+      description: Password-only acceptance returns empty object when MfaFeature is off
     InvitationAcceptCompleteRequest:
       type: object
       properties:
@@ -493,7 +705,7 @@ components:
         totpCode:
           type: string
           pattern: '^\d{6}$'
-      required: [token, totpCode]
+      required: [token]
     InvitationAcceptJoinRequest:
       type: object
       properties:
@@ -505,7 +717,7 @@ components:
         totpCode:
           type: string
           pattern: '^\d{6}$'
-      required: [token, password, totpCode]
+      required: [token, password]
     MembershipSummaryResponse:
       type: object
       properties:
@@ -548,3 +760,84 @@ components:
         permission:
           type: string
       required: [permission]
+
+    FactorChallengeRequest:
+      type: object
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        bindingId:
+          type: string
+        totpCode:
+          type: string
+        recoveryCode:
+          type: string
+      required: [challengeId]
+    FactorChallengeRequiredResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [FACTOR_CHALLENGE_REQUIRED]
+        challengeId:
+          type: string
+          format: uuid
+        bindings:
+          type: array
+          items:
+            $ref: "#/components/schemas/FactorBindingView"
+      required: [status, challengeId, bindings]
+    FactorBindingView:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        softLabel:
+          type: string
+      required: [id, kind, softLabel]
+    MfaFeatureRequest:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        reason:
+          type: string
+      required: [enabled, reason]
+    MfaFeatureResponse:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required: [enabled]
+    FactorEnrollmentBeginResponse:
+      type: object
+      properties:
+        totpSecret:
+          type: string
+        otpauthUrl:
+          type: string
+      required: [totpSecret, otpauthUrl]
+    FactorEnrollmentCompleteRequest:
+      type: object
+      properties:
+        totpCode:
+          type: string
+          pattern: '^\d{6}$'
+      required: [totpCode]
+    RecoveryCodesResponse:
+      type: object
+      properties:
+        recoveryCodes:
+          type: array
+          items:
+            type: string
+      required: [recoveryCodes]
+    MfaResetRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+      required: [reason]

@@ -1,0 +1,111 @@
+package io.rosecloud.iam.identity;
+
+import io.rosecloud.iam.audit.AuditService;
+import io.rosecloud.iam.shared.TotpSecretCrypto;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class FactorEnrollmentService {
+
+  private final IamUserRepository iamUserRepository;
+  private final TotpService totpService;
+  private final MfaFeatureService mfaFeatureService;
+  private final RecoveryCodeService recoveryCodeService;
+  private final AuditService auditService;
+
+  public FactorEnrollmentService(
+      IamUserRepository iamUserRepository,
+      TotpService totpService,
+      MfaFeatureService mfaFeatureService,
+      RecoveryCodeService recoveryCodeService,
+      AuditService auditService) {
+    this.iamUserRepository = iamUserRepository;
+    this.totpService = totpService;
+    this.mfaFeatureService = mfaFeatureService;
+    this.recoveryCodeService = recoveryCodeService;
+    this.auditService = auditService;
+  }
+
+  @Transactional
+  public TotpService.TotpEnrollment beginTotp(UUID userId) {
+    requireMfaOnForEnrollment();
+    IamUser user = requireActive(userId);
+    if (user.hasTotpBinding()) {
+      throw new FactorChallengeException(HttpStatus.CONFLICT, "factor binding already present");
+    }
+    TotpService.TotpEnrollment enrollment = totpService.newEnrollment(user.email());
+    TotpSecretCrypto.EncryptedSecret encrypted = enrollment.encryptedSecret();
+    user.beginPendingTotp(encrypted.ciphertext(), encrypted.keyId());
+    return enrollment;
+  }
+
+  @Transactional
+  public List<String> completeTotp(UUID userId, String totpCode) {
+    requireMfaOnForEnrollment();
+    IamUser user = requireActive(userId);
+    if (!user.hasPendingTotp()) {
+      throw new FactorChallengeException(HttpStatus.CONFLICT, "no pending enrollment");
+    }
+    if (!totpService.verify(
+        user.pendingTotpSecretKeyId(), user.pendingTotpSecretCiphertext(), totpCode)) {
+      throw new FactorChallengeException(HttpStatus.UNAUTHORIZED, "invalid TOTP code");
+    }
+    user.bindTotp(user.pendingTotpSecretCiphertext(), user.pendingTotpSecretKeyId());
+    List<String> recoveryCodes =
+        recoveryCodeService.replaceAll(SessionPrincipalKind.USER, userId);
+    auditService.append("factor.binding_created", userId, "totp binding created");
+    return recoveryCodes;
+  }
+
+  @Transactional
+  public void revokeTotp(UUID userId) {
+    IamUser user = requireActive(userId);
+    if (!user.hasTotpBinding()) {
+      throw new FactorChallengeException(HttpStatus.CONFLICT, "no factor binding");
+    }
+    user.clearTotp();
+    recoveryCodeService.revokeAll(SessionPrincipalKind.USER, userId);
+    auditService.append("factor.binding_revoked", userId, "totp binding revoked");
+  }
+
+  @Transactional
+  public List<String> regenerateRecoveryCodes(UUID userId) {
+    IamUser user = requireActive(userId);
+    if (!user.hasTotpBinding()) {
+      throw new FactorChallengeException(HttpStatus.CONFLICT, "no factor binding");
+    }
+    List<String> codes = recoveryCodeService.replaceAll(SessionPrincipalKind.USER, userId);
+    auditService.append("recovery_code.regenerated", userId, "recovery codes regenerated");
+    return codes;
+  }
+
+  @Transactional
+  public void operatorReset(UUID userId, String reason) {
+    IamUser user =
+        iamUserRepository
+            .findById(userId)
+            .orElseThrow(() -> new FactorChallengeException(HttpStatus.NOT_FOUND, "user not found"));
+    user.clearTotp();
+    recoveryCodeService.revokeAll(SessionPrincipalKind.USER, userId);
+    auditService.append(
+        "factor.operator_reset", userId, "operator reset mfa credentials; reason=" + reason);
+  }
+
+  private void requireMfaOnForEnrollment() {
+    if (!mfaFeatureService.isEnabled()) {
+      throw new FactorChallengeException(
+          HttpStatus.CONFLICT, "mfa feature disabled; cannot create factor binding");
+    }
+  }
+
+  private IamUser requireActive(UUID userId) {
+    return iamUserRepository
+        .findById(userId)
+        .filter(user -> user.status() == UserStatus.ACTIVE)
+        .orElseThrow(() -> new FactorChallengeException(HttpStatus.UNAUTHORIZED, "user not found"));
+  }
+}

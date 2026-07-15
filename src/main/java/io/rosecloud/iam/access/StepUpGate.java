@@ -1,22 +1,46 @@
 package io.rosecloud.iam.access;
 
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-/**
- * Interface-level StepUp hook for high-risk operations (Plan I6). Thin slice has no issued StepUp
- * token yet; call sites retain the seam until Operator MFA reset / owner transfer ships.
- */
+/** High-risk ops require recent LoginSession StepUp (password / challenge at login). */
 @Component
 public class StepUpGate {
 
-  public void requireRecentPasswordAndTotp(Authentication authentication) {
-    if (authentication == null || !authentication.isAuthenticated()) {
-      throw new AuthorizationException(
-          HttpStatus.UNAUTHORIZED, "step-up required: recent password + TOTP");
-    }
-    // No StepUp claim issuance in this slice — presence of an authenticated principal is enough to
-    // retain the call-site hook without changing thin-slice endpoint semantics.
+  private final SessionStepUpPort sessionStepUpPort;
+
+  public StepUpGate(SessionStepUpPort sessionStepUpPort) {
+    this.sessionStepUpPort = sessionStepUpPort;
   }
+
+  public void requireRecentReauth(Authentication authentication) {
+    PrincipalRef principal = resolve(authentication);
+    sessionStepUpPort.requireRecentReauth(principal.type(), principal.id());
+  }
+
+  /** @deprecated Prefer {@link #requireRecentReauth(Authentication)} */
+  public void requireRecentPasswordAndTotp(Authentication authentication) {
+    requireRecentReauth(authentication);
+  }
+
+  private PrincipalRef resolve(Authentication authentication) {
+    if (authentication == null || !authentication.isAuthenticated()) {
+      throw new AuthorizationException(HttpStatus.UNAUTHORIZED, "step-up required");
+    }
+    Object principal = authentication.getPrincipal();
+    if (principal instanceof OperatorPrincipal operatorPrincipal) {
+      return new PrincipalRef("OPERATOR", operatorPrincipal.operatorId());
+    }
+    if (principal instanceof UserPrincipal userPrincipal) {
+      return new PrincipalRef("USER", userPrincipal.userId());
+    }
+    if (principal instanceof TenantPrincipal tenantPrincipal) {
+      return new PrincipalRef("USER", tenantPrincipal.userId());
+    }
+    throw new AuthorizationException(HttpStatus.UNAUTHORIZED, "step-up required");
+  }
+
+  private record PrincipalRef(String type, UUID id) {}
 }

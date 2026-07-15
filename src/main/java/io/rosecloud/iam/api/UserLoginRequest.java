@@ -7,4 +7,4 @@ import jakarta.validation.constraints.Pattern;
 public record UserLoginRequest(
     @NotBlank @Email String email,
     @NotBlank String password,
-    @NotBlank @Pattern(regexp = "\\d{6}") String totpCode) {}
+    @Pattern(regexp = "\\d{6}") String totpCode) {}

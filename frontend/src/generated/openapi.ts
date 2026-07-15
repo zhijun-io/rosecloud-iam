@@ -293,6 +293,211 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/operator/factor-challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete operator FactorChallenge and issue session */
+        post: operations["operatorFactorChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/operator/mfa-feature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read platform MfaFeature flag */
+        get: operations["getMfaFeature"];
+        /** Flip platform MfaFeature (requires StepUp) */
+        put: operations["setMfaFeature"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/operator/factors/totp/begin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin voluntary Operator TOTP FactorBinding enrollment */
+        post: operations["operatorFactorTotpBegin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/operator/factors/totp/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Operator TOTP FactorBinding enrollment */
+        post: operations["operatorFactorTotpComplete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/operator/factors/totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Operator TOTP FactorBinding */
+        delete: operations["operatorFactorTotpRevoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/operator/factors/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate Operator recovery codes (requires StepUp) */
+        post: operations["operatorRecoveryCodesRegenerate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/operator/users/{userId}/mfa-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Operator reset of a user's FactorBinding and RecoveryCode */
+        post: operations["operatorResetUserMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/factor-challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete user FactorChallenge and issue session */
+        post: operations["userFactorChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/factors/totp/begin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin voluntary User TOTP FactorBinding enrollment */
+        post: operations["meFactorTotpBegin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/factors/totp/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete User TOTP FactorBinding enrollment */
+        post: operations["meFactorTotpComplete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/factors/totp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke User TOTP FactorBinding */
+        delete: operations["meFactorTotpRevoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/factors/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Regenerate User recovery codes (requires StepUp) */
+        post: operations["meRecoveryCodesRegenerate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -301,17 +506,18 @@ export interface components {
             setupToken: string;
             password: string;
         };
+        /** @description Password-only setup returns empty object; totp fields only when enrollment material is issued */
         OperatorSetupBeginResponse: {
-            totpSecret: string;
-            otpauthUrl: string;
+            totpSecret?: string | null;
+            otpauthUrl?: string | null;
         };
         OperatorSetupCompleteRequest: {
             setupToken: string;
-            totpCode: string;
+            totpCode?: string;
         };
         OperatorLoginRequest: {
             password: string;
-            totpCode: string;
+            totpCode?: string;
         };
         OperatorLoginResponse: {
             accessToken: string;
@@ -323,7 +529,7 @@ export interface components {
             /** Format: email */
             email: string;
             password: string;
-            totpCode: string;
+            totpCode?: string;
         };
         AccessTokenResponse: {
             accessToken: string;
@@ -358,18 +564,19 @@ export interface components {
             token: string;
             password: string;
         };
+        /** @description Password-only acceptance returns empty object when MfaFeature is off */
         InvitationAcceptBeginResponse: {
-            totpSecret: string;
-            otpauthUrl: string;
+            totpSecret?: string | null;
+            otpauthUrl?: string | null;
         };
         InvitationAcceptCompleteRequest: {
             token: string;
-            totpCode: string;
+            totpCode?: string;
         };
         InvitationAcceptJoinRequest: {
             token: string;
             password: string;
-            totpCode: string;
+            totpCode?: string;
         };
         MembershipSummaryResponse: {
             /** Format: uuid */
@@ -392,6 +599,45 @@ export interface components {
         };
         DemoPermissionResponse: {
             permission: string;
+        };
+        FactorChallengeRequest: {
+            /** Format: uuid */
+            challengeId: string;
+            bindingId?: string;
+            totpCode?: string;
+            recoveryCode?: string;
+        };
+        FactorChallengeRequiredResponse: {
+            /** @enum {string} */
+            status: "FACTOR_CHALLENGE_REQUIRED";
+            /** Format: uuid */
+            challengeId: string;
+            bindings: components["schemas"]["FactorBindingView"][];
+        };
+        FactorBindingView: {
+            id: string;
+            kind: string;
+            softLabel: string;
+        };
+        MfaFeatureRequest: {
+            enabled: boolean;
+            reason: string;
+        };
+        MfaFeatureResponse: {
+            enabled: boolean;
+        };
+        FactorEnrollmentBeginResponse: {
+            totpSecret: string;
+            otpauthUrl: string;
+        };
+        FactorEnrollmentCompleteRequest: {
+            totpCode: string;
+        };
+        RecoveryCodesResponse: {
+            recoveryCodes: string[];
+        };
+        MfaResetRequest: {
+            reason: string;
         };
     };
     responses: never;
@@ -461,15 +707,15 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Access token with refresh cookie */
+            /** @description Access token, or FactorChallengeRequired when MfaFeature is on and a binding exists */
             200: {
                 headers: {
-                    /** @description Refresh token cookie named rc_refresh */
+                    /** @description Refresh token cookie named rc_refresh (omitted when challenge required) */
                     "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OperatorLoginResponse"];
+                    "application/json": components["schemas"]["OperatorLoginResponse"] | components["schemas"]["FactorChallengeRequiredResponse"];
                 };
             };
         };
@@ -495,7 +741,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AccessTokenResponse"];
+                    "application/json": components["schemas"]["AccessTokenResponse"] | components["schemas"]["FactorChallengeRequiredResponse"];
                 };
             };
             /** @description Generic login rejection */
@@ -948,6 +1194,288 @@ export interface operations {
                     "application/json": {
                         keys: Record<string, never>[];
                     };
+                };
+            };
+        };
+    };
+    operatorFactorChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactorChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Access token with refresh cookie */
+            200: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorLoginResponse"];
+                };
+            };
+        };
+    };
+    getMfaFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current flag */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaFeatureResponse"];
+                };
+            };
+        };
+    };
+    setMfaFeature: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaFeatureRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated flag */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaFeatureResponse"];
+                };
+            };
+        };
+    };
+    operatorFactorTotpBegin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Enrollment material */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FactorEnrollmentBeginResponse"];
+                };
+            };
+        };
+    };
+    operatorFactorTotpComplete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactorEnrollmentCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description One-time recovery codes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodesResponse"];
+                };
+            };
+        };
+    };
+    operatorFactorTotpRevoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    operatorRecoveryCodesRegenerate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One-time recovery codes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodesResponse"];
+                };
+            };
+        };
+    };
+    operatorResetUserMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Credentials reset */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    userFactorChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactorChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description Access token with refresh cookie */
+            200: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessTokenResponse"];
+                };
+            };
+        };
+    };
+    meFactorTotpBegin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Enrollment material */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FactorEnrollmentBeginResponse"];
+                };
+            };
+        };
+    };
+    meFactorTotpComplete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactorEnrollmentCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description One-time recovery codes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodesResponse"];
+                };
+            };
+        };
+    };
+    meFactorTotpRevoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    meRecoveryCodesRegenerate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One-time recovery codes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodesResponse"];
                 };
             };
         };

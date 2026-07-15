@@ -34,12 +34,16 @@ abstract class AbstractIamApiIntegrationTest extends AbstractPostgresIntegration
     jdbcTemplate.update("delete from membership");
     jdbcTemplate.update("delete from invitation");
     jdbcTemplate.update("delete from outbox_message");
+    jdbcTemplate.update("delete from recovery_code");
+    jdbcTemplate.update("delete from factor_challenge");
     jdbcTemplate.update("delete from iam_user");
     jdbcTemplate.update("delete from tenant");
     jdbcTemplate.update("delete from login_session");
     jdbcTemplate.update("delete from operator_setup_token");
     jdbcTemplate.update("delete from platform_operator");
     jdbcTemplate.update("delete from audit_event");
+    jdbcTemplate.update(
+        "update platform_setting set value_bool = false, updated_at = now() where setting_key = 'mfa_feature'");
   }
 
   String createTenantAndReadInvitationToken(String accessToken, String ownerEmail) throws Exception {
@@ -101,23 +105,19 @@ abstract class AbstractIamApiIntegrationTest extends AbstractPostgresIntegration
             "tenant.owner_invited");
     String invitationToken = extractJsonField(outboxPayload, "token");
 
-    MvcResult beginResult =
-        mockMvc
-            .perform(
-                post("/api/invitations/accept/begin")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(
-                        """
-                        {
-                          "token": "%s",
-                          "password": "%s"
-                        }
-                        """
-                            .formatted(invitationToken, password)))
-            .andExpect(status().isOk())
-            .andReturn();
-
-    String totpSecret = extractJsonField(beginResult.getResponse().getContentAsString(), "totpSecret");
+    mockMvc
+        .perform(
+            post("/api/invitations/accept/begin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "token": "%s",
+                      "password": "%s"
+                    }
+                    """
+                        .formatted(invitationToken, password)))
+        .andExpect(status().isOk());
 
     mockMvc
         .perform(
@@ -126,11 +126,10 @@ abstract class AbstractIamApiIntegrationTest extends AbstractPostgresIntegration
                 .content(
                     """
                     {
-                      "token": "%s",
-                      "totpCode": "%s"
+                      "token": "%s"
                     }
                     """
-                        .formatted(invitationToken, currentTotpCode(totpSecret))))
+                        .formatted(invitationToken)))
         .andExpect(status().isNoContent());
 
     String userId =
@@ -153,7 +152,7 @@ abstract class AbstractIamApiIntegrationTest extends AbstractPostgresIntegration
         java.util.UUID.fromString(tenantId),
         java.util.UUID.fromString(invitationId),
         invitationToken,
-        totpSecret,
+        null,
         java.util.UUID.fromString(userId),
         java.util.UUID.fromString(membershipId),
         password,
@@ -162,23 +161,19 @@ abstract class AbstractIamApiIntegrationTest extends AbstractPostgresIntegration
 
   String bootstrapOperatorAndLogin() throws Exception {
     String setupToken = issueSetupToken();
-    MvcResult beginResult =
-        mockMvc
-            .perform(
-                post("/api/operator/setup/begin")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(
-                        """
-                        {
-                          "setupToken": "%s",
-                          "password": "correct horse battery staple"
-                        }
-                        """
-                            .formatted(setupToken)))
-            .andExpect(status().isOk())
-            .andReturn();
-
-    String totpSecret = extractJsonField(beginResult.getResponse().getContentAsString(), "totpSecret");
+    mockMvc
+        .perform(
+            post("/api/operator/setup/begin")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "setupToken": "%s",
+                      "password": "correct horse battery staple"
+                    }
+                    """
+                        .formatted(setupToken)))
+        .andExpect(status().isOk());
 
     mockMvc
         .perform(
@@ -187,11 +182,10 @@ abstract class AbstractIamApiIntegrationTest extends AbstractPostgresIntegration
                 .content(
                     """
                     {
-                      "setupToken": "%s",
-                      "totpCode": "%s"
+                      "setupToken": "%s"
                     }
                     """
-                        .formatted(setupToken, currentTotpCode(totpSecret))))
+                        .formatted(setupToken)))
         .andExpect(status().isNoContent());
 
     MvcResult loginResult =
@@ -202,11 +196,9 @@ abstract class AbstractIamApiIntegrationTest extends AbstractPostgresIntegration
                     .content(
                         """
                         {
-                          "password": "correct horse battery staple",
-                          "totpCode": "%s"
+                          "password": "correct horse battery staple"
                         }
-                        """
-                            .formatted(currentTotpCode(totpSecret))))
+                        """))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -214,20 +206,27 @@ abstract class AbstractIamApiIntegrationTest extends AbstractPostgresIntegration
   }
 
   SessionFixture loginUser(String email, String password, String totpSecret) throws Exception {
+    String body =
+        totpSecret == null
+            ? """
+              {
+                "email": "%s",
+                "password": "%s"
+              }
+              """
+                .formatted(email, password)
+            : """
+              {
+                "email": "%s",
+                "password": "%s",
+                "totpCode": "%s"
+              }
+              """
+                .formatted(email, password, currentTotpCode(totpSecret));
     MvcResult loginResult =
         mockMvc
             .perform(
-                post("/api/sessions/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(
-                        """
-                        {
-                          "email": "%s",
-                          "password": "%s",
-                          "totpCode": "%s"
-                        }
-                        """
-                            .formatted(email, password, currentTotpCode(totpSecret))))
+                post("/api/sessions/login").contentType(MediaType.APPLICATION_JSON).content(body))
             .andExpect(status().isOk())
             .andReturn();
 

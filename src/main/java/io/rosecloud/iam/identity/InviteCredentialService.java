@@ -17,80 +17,83 @@ public class InviteCredentialService {
 
   private final IamUserRepository iamUserRepository;
   private final PasswordEncoder passwordEncoder;
-  private final TotpService totpService;
+  private final MfaFeatureService mfaFeatureService;
+  private final FactorChallengeService factorChallengeService;
 
   public InviteCredentialService(
       IamUserRepository iamUserRepository,
       PasswordEncoder passwordEncoder,
-      TotpService totpService) {
+      MfaFeatureService mfaFeatureService,
+      FactorChallengeService factorChallengeService) {
     this.iamUserRepository = iamUserRepository;
     this.passwordEncoder = passwordEncoder;
-    this.totpService = totpService;
+    this.mfaFeatureService = mfaFeatureService;
+    this.factorChallengeService = factorChallengeService;
   }
 
   @Transactional
   public EnrollmentBegin beginEnrollment(String email, String password) {
     String normalized = email.trim().toLowerCase(Locale.ROOT);
-    TotpService.TotpEnrollment enrollment = totpService.newEnrollment(normalized);
 
     IamUser user =
         iamUserRepository
             .findByEmailIgnoreCase(normalized)
-            .map(existing -> replacePendingEnrollment(existing, password, enrollment))
+            .map(existing -> replacePendingEnrollment(existing, password))
             .orElseGet(
                 () ->
                     new IamUser(
                         normalized,
                         passwordEncoder.encode(password),
-                        enrollment.encryptedSecret().ciphertext(),
-                        enrollment.encryptedSecret().keyId(),
+                        null,
+                        null,
                         UserStatus.PENDING_TOTP));
     iamUserRepository.save(user);
-    return new EnrollmentBegin(enrollment.secret(), enrollment.otpauthUrl());
+    return new EnrollmentBegin(null, null);
   }
 
   @Transactional
-  public UUID activatePendingWithTotp(String email, String totpCode) {
+  public UUID activatePending(String email) {
     IamUser user =
         iamUserRepository
             .findByEmailIgnoreCase(email)
             .filter(candidate -> candidate.status() == UserStatus.PENDING_TOTP)
             .orElseThrow(() -> new InviteCredentialException(GENERIC_REJECTION));
 
-    if (!totpService.verify(user.totpSecretKeyId(), user.totpSecretCiphertext(), totpCode)) {
-      throw new InviteCredentialException("invalid TOTP code");
-    }
-
     user.activate();
     return user.id();
   }
 
-  @Transactional(readOnly = true)
-  public UUID authenticateActiveUser(String email, String password, String totpCode) {
+  /** @deprecated use {@link #activatePending(String)} — totp no longer required when MfaFeature off */
+  @Transactional
+  public UUID activatePendingWithTotp(String email, String totpCode) {
+    return activatePending(email);
+  }
+
+  @Transactional
+  public LoginDecision authenticateActiveUser(String email, String password) {
     IamUser user =
         iamUserRepository
             .findByEmailIgnoreCase(email)
             .filter(candidate -> candidate.status() == UserStatus.ACTIVE)
             .orElseThrow(() -> new InviteCredentialException(GENERIC_REJECTION));
 
-    if (!passwordEncoder.matches(password, user.passwordHash())
-        || !totpService.verify(user.totpSecretKeyId(), user.totpSecretCiphertext(), totpCode)) {
+    if (!passwordEncoder.matches(password, user.passwordHash())) {
       throw new InviteCredentialException(GENERIC_REJECTION);
     }
 
-    return user.id();
+    if (mfaFeatureService.isEnabled() && user.hasTotpBinding()) {
+      return factorChallengeService.begin(SessionPrincipalKind.USER, user.id());
+    }
+
+    return new LoginDecision.SessionReady(user.id());
   }
 
-  private IamUser replacePendingEnrollment(
-      IamUser existing, String password, TotpService.TotpEnrollment enrollment) {
+  private IamUser replacePendingEnrollment(IamUser existing, String password) {
     if (existing.status() != UserStatus.PENDING_TOTP) {
       throw new InviteCredentialException(GENERIC_REJECTION);
     }
 
-    existing.replacePendingEnrollment(
-        passwordEncoder.encode(password),
-        enrollment.encryptedSecret().ciphertext(),
-        enrollment.encryptedSecret().keyId());
+    existing.replacePendingEnrollment(passwordEncoder.encode(password));
     return existing;
   }
 

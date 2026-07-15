@@ -41,6 +41,8 @@ rosecloud:
   iam:
     refresh-reuse-grace: 5s
     refresh-token-ttl: 30d
+    factor-challenge-ttl: 2m
+    step-up-window: 5m
     max-sessions-per-user: 10
     login-rate-limit:
       # Progressive short cooldown by email + IP (never a permanent lock).

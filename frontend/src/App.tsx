@@ -1,12 +1,16 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   apiClient,
+  hasAccessToken,
+  isFactorChallengeRequired,
   type ApiResult,
   type CreateMemberInvitationRequest,
   type CreateMemberInvitationResponse,
   type CreateTenantRequest,
   type CreateTenantResponse,
   type DemoPermissionResponse,
+  type FactorChallengeRequest,
+  type FactorChallengeRequiredResponse,
   type InvitationAcceptBeginRequest,
   type InvitationAcceptBeginResponse,
   type InvitationAcceptCompleteRequest,
@@ -194,15 +198,32 @@ export function App() {
 
   async function handleOperatorLogin(
     body: OperatorLoginRequest,
-  ): Promise<ApiResult<OperatorLoginResponse>> {
+  ): Promise<ApiResult<OperatorLoginResponse | FactorChallengeRequiredResponse>> {
     const result = await apiClient.operatorLogin(body);
+    if (result.ok) {
+      if (isFactorChallengeRequired(result.data)) {
+        showNotice("info", "Factor challenge required.");
+      } else if (hasAccessToken(result.data)) {
+        activateToken(result.data.accessToken, "operator");
+        showNotice("success", "Operator access token loaded in memory.");
+      }
+    } else {
+      showNotice("error", result.error);
+    }
+
+    return result;
+  }
+
+  async function handleOperatorFactorChallenge(
+    body: FactorChallengeRequest,
+  ): Promise<ApiResult<OperatorLoginResponse>> {
+    const result = await apiClient.operatorFactorChallenge(body);
     if (result.ok) {
       activateToken(result.data.accessToken, "operator");
       showNotice("success", "Operator access token loaded in memory.");
     } else {
       showNotice("error", result.error);
     }
-
     return result;
   }
 
@@ -264,8 +285,27 @@ export function App() {
 
   async function handleUserLogin(
     body: UserLoginRequest,
-  ): Promise<ApiResult<AccessTokenResponse>> {
+  ): Promise<ApiResult<AccessTokenResponse | FactorChallengeRequiredResponse>> {
     const result = await apiClient.userLogin(body);
+    if (result.ok) {
+      if (isFactorChallengeRequired(result.data)) {
+        showNotice("info", "Factor challenge required.");
+      } else if (hasAccessToken(result.data)) {
+        activateToken(result.data.accessToken, "user");
+        showNotice("success", "User access token loaded. Select a tenant next.");
+        navigate("select-tenant");
+      }
+    } else {
+      showNotice("error", result.error);
+    }
+
+    return result;
+  }
+
+  async function handleUserFactorChallenge(
+    body: FactorChallengeRequest,
+  ): Promise<ApiResult<AccessTokenResponse>> {
+    const result = await apiClient.userFactorChallenge(body);
     if (result.ok) {
       activateToken(result.data.accessToken, "user");
       showNotice("success", "User access token loaded. Select a tenant next.");
@@ -273,7 +313,6 @@ export function App() {
     } else {
       showNotice("error", result.error);
     }
-
     return result;
   }
 
@@ -387,7 +426,12 @@ export function App() {
           />
         );
       case "operator-login":
-        return <OperatorLoginScreen onLogin={handleOperatorLogin} />;
+        return (
+          <OperatorLoginScreen
+            onLogin={handleOperatorLogin}
+            onFactorChallenge={handleOperatorFactorChallenge}
+          />
+        );
       case "create-tenant":
         return (
           <OperatorCreateTenantScreen
@@ -405,7 +449,12 @@ export function App() {
           />
         );
       case "user-login":
-        return <UserLoginScreen onLogin={handleUserLogin} />;
+        return (
+          <UserLoginScreen
+            onLogin={handleUserLogin}
+            onFactorChallenge={handleUserFactorChallenge}
+          />
+        );
       case "select-tenant":
         return (
           <SelectTenantScreen

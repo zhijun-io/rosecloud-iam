@@ -43,10 +43,11 @@ public class UserSessionService {
   @Transactional
   public UserLoginResult createSession(UUID userId) {
     String refreshToken = randomRefreshToken();
-    Instant expiresAt = Instant.now(clock).plus(properties.refreshTokenTtl());
+    Instant now = Instant.now(clock);
+    Instant expiresAt = now.plus(properties.refreshTokenTtl());
 
     loginSessionRepository.save(
-        LoginSession.user(userId, UuidV7.next(), sha256Hasher.hash(refreshToken), expiresAt));
+        LoginSession.user(userId, UuidV7.next(), sha256Hasher.hash(refreshToken), expiresAt, now));
     pruneOldestSessions(userId);
 
     JwtIssuer.IssuedAccessToken accessToken = jwtIssuer.issueUserToken(userId);

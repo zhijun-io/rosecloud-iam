@@ -25,11 +25,17 @@ class PlatformOperator {
   @Column(name = "password_hash", nullable = false, length = 255)
   private String passwordHash;
 
-  @Column(name = "totp_secret_ciphertext", nullable = false)
+  @Column(name = "totp_secret_ciphertext")
   private String totpSecretCiphertext;
 
-  @Column(name = "totp_secret_key_id", nullable = false, length = 64)
+  @Column(name = "totp_secret_key_id", length = 64)
   private String totpSecretKeyId;
+
+  @Column(name = "pending_totp_secret_ciphertext")
+  private String pendingTotpSecretCiphertext;
+
+  @Column(name = "pending_totp_secret_key_id", length = 64)
+  private String pendingTotpSecretKeyId;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
@@ -66,6 +72,50 @@ class PlatformOperator {
 
   String totpSecretKeyId() {
     return totpSecretKeyId;
+  }
+
+  boolean hasTotpBinding() {
+    return totpSecretCiphertext != null
+        && !totpSecretCiphertext.isBlank()
+        && totpSecretKeyId != null
+        && !totpSecretKeyId.isBlank();
+  }
+
+  void bindTotp(String totpSecretCiphertext, String totpSecretKeyId) {
+    this.totpSecretCiphertext = totpSecretCiphertext;
+    this.totpSecretKeyId = totpSecretKeyId;
+    clearPendingTotp();
+  }
+
+  void beginPendingTotp(String ciphertext, String keyId) {
+    this.pendingTotpSecretCiphertext = ciphertext;
+    this.pendingTotpSecretKeyId = keyId;
+  }
+
+  String pendingTotpSecretCiphertext() {
+    return pendingTotpSecretCiphertext;
+  }
+
+  String pendingTotpSecretKeyId() {
+    return pendingTotpSecretKeyId;
+  }
+
+  boolean hasPendingTotp() {
+    return pendingTotpSecretCiphertext != null
+        && !pendingTotpSecretCiphertext.isBlank()
+        && pendingTotpSecretKeyId != null
+        && !pendingTotpSecretKeyId.isBlank();
+  }
+
+  void clearPendingTotp() {
+    this.pendingTotpSecretCiphertext = null;
+    this.pendingTotpSecretKeyId = null;
+  }
+
+  void clearTotp() {
+    this.totpSecretCiphertext = null;
+    this.totpSecretKeyId = null;
+    clearPendingTotp();
   }
 
   void activate() {

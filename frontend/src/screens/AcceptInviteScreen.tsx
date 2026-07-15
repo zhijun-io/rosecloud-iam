@@ -29,9 +29,9 @@ export function AcceptInviteScreen({
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [joinPassword, setJoinPassword] = useState("");
-  const [joinTotpCode, setJoinTotpCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const needsTotp = Boolean(enrollment?.totpSecret);
 
   async function handleBegin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,14 +39,18 @@ export function AcceptInviteScreen({
     const result = await onBegin({ token, password });
     setIsPending(false);
     setMessage(
-      result.ok ? "Invite begin succeeded. Finish TOTP below." : result.error,
+      result.ok
+        ? result.data.totpSecret
+          ? "Invite begin succeeded. Finish TOTP below."
+          : "Password captured. Complete accept to activate."
+        : result.error,
     );
   }
 
   async function handleComplete(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsPending(true);
-    const result = await onComplete({ token, totpCode });
+    const result = await onComplete(needsTotp ? { token, totpCode } : { token });
     setIsPending(false);
     setMessage(
       result.ok
@@ -61,7 +65,6 @@ export function AcceptInviteScreen({
     const result = await onJoin({
       token,
       password: joinPassword,
-      totpCode: joinTotpCode,
     });
     setIsPending(false);
     setMessage(
@@ -78,7 +81,8 @@ export function AcceptInviteScreen({
         <h2>Paste the invite token</h2>
         <p className={styles.lead}>
           Keep a single pasted token here, then choose either the new-user
-          enrollment path or the existing-user join path.
+          enrollment path or the existing-user join path. FactorBinding is not
+          required when MfaFeature is off.
         </p>
 
         <label className="fieldStack">
@@ -116,23 +120,33 @@ export function AcceptInviteScreen({
 
           {enrollment ? (
             <>
-              <pre className={`${styles.codeBlock} ${styles.inlineCode}`}>
-                {enrollment.totpSecret}
-              </pre>
-              <pre className={`${styles.codeBlock} ${styles.inlineCode}`}>
-                {enrollment.otpauthUrl}
-              </pre>
+              {needsTotp ? (
+                <>
+                  <pre className={`${styles.codeBlock} ${styles.inlineCode}`}>
+                    {enrollment.totpSecret}
+                  </pre>
+                  <pre className={`${styles.codeBlock} ${styles.inlineCode}`}>
+                    {enrollment.otpauthUrl}
+                  </pre>
+                </>
+              ) : (
+                <p className={styles.emptyState}>
+                  Password-only activation. No TOTP enrollment in this flow.
+                </p>
+              )}
               <form className="formStack" onSubmit={handleComplete}>
-                <label className="fieldStack">
-                  <span>TOTP code</span>
-                  <input
-                    inputMode="numeric"
-                    value={totpCode}
-                    onChange={(event) => setTotpCode(event.target.value)}
-                    placeholder="123456"
-                    required
-                  />
-                </label>
+                {needsTotp ? (
+                  <label className="fieldStack">
+                    <span>TOTP code</span>
+                    <input
+                      inputMode="numeric"
+                      value={totpCode}
+                      onChange={(event) => setTotpCode(event.target.value)}
+                      placeholder="123456"
+                      required
+                    />
+                  </label>
+                ) : null}
                 <div className="actions">
                   <button type="submit" disabled={isPending}>
                     {isPending ? "Completing..." : "Complete accept"}
@@ -142,7 +156,7 @@ export function AcceptInviteScreen({
             </>
           ) : (
             <p className={styles.emptyState}>
-              Begin the invitation first to reveal the TOTP secret.
+              Begin the invitation first to continue.
             </p>
           )}
         </article>
@@ -150,8 +164,8 @@ export function AcceptInviteScreen({
         <article className={`surface ${styles.stack}`}>
           <h3>Existing user join</h3>
           <p className={styles.small}>
-            This path proves password + TOTP for an already active user and does
-            not reset that user&apos;s TOTP secret.
+            Proves password for an already active user. If that user must
+            complete a FactorChallenge first, finish user login, then rejoin.
           </p>
           <form className="formStack" onSubmit={handleJoin}>
             <label className="fieldStack">
@@ -164,16 +178,6 @@ export function AcceptInviteScreen({
                 required
               />
             </label>
-            <label className="fieldStack">
-              <span>TOTP code</span>
-              <input
-                inputMode="numeric"
-                value={joinTotpCode}
-                onChange={(event) => setJoinTotpCode(event.target.value)}
-                placeholder="123456"
-                required
-              />
-            </label>
             <div className="actions">
               <button type="submit" disabled={isPending}>
                 {isPending ? "Joining..." : "Join tenant"}
@@ -183,11 +187,7 @@ export function AcceptInviteScreen({
         </article>
       </section>
 
-      {message ? (
-        <section className="surface">
-          <p className="statusText">{message}</p>
-        </section>
-      ) : null}
+      {message ? <p className="statusText">{message}</p> : null}
     </div>
   );
 }

@@ -40,7 +40,9 @@ class SecurityConfiguration {
                     .requestMatchers(
                         "/api/operator/setup/**",
                         "/api/operator/login",
+                        "/api/operator/factor-challenge",
                         "/api/sessions/login",
+                        "/api/sessions/factor-challenge",
                         "/api/sessions/refresh",
                         "/api/sessions/logout",
                         "/api/invitations/**",
@@ -53,6 +55,8 @@ class SecurityConfiguration {
                     .hasRole("USER")
                     .requestMatchers(HttpMethod.POST, "/api/me/tenant-context")
                     .hasRole("USER")
+                    .requestMatchers("/api/me/factors/**")
+                    .hasAnyRole("USER", "TENANT")
                     .requestMatchers("/api/tenants/**", "/api/demo/**")
                     .hasRole("TENANT")
                     .anyRequest()

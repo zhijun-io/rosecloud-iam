@@ -36,7 +36,7 @@ class LoginRateLimitIT extends AbstractIamApiIntegrationTest {
               post("/api/sessions/login")
                   .with(ipA)
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(loginBody(owner.email(), "wrong-password", "000000")))
+                  .content(loginBody(owner.email(), "wrong-password")))
           .andExpect(status().isUnauthorized());
     }
 
@@ -46,7 +46,7 @@ class LoginRateLimitIT extends AbstractIamApiIntegrationTest {
                 post("/api/sessions/login")
                     .with(ipA)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(loginBody(owner.email(), "wrong-password", "000000")))
+                    .content(loginBody(owner.email(), "wrong-password")))
             .andExpect(status().isTooManyRequests())
             .andReturn();
     assertThat(throttled.getResponse().getHeader("Retry-After")).isNotBlank();
@@ -58,18 +58,17 @@ class LoginRateLimitIT extends AbstractIamApiIntegrationTest {
             post("/api/sessions/login")
                 .with(remoteIp("203.0.113.20"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(loginBody(owner.email(), "wrong-password", "000000")))
+                .content(loginBody(owner.email(), "wrong-password")))
         .andExpect(status().isUnauthorized());
 
     Thread.sleep(500);
 
-    String totp = currentTotpCode(owner.totpSecret());
     mockMvc
         .perform(
             post("/api/sessions/login")
                 .with(ipA)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(loginBody(owner.email(), owner.password(), totp)))
+                .content(loginBody(owner.email(), owner.password())))
         .andExpect(status().isOk());
   }
 
@@ -80,14 +79,13 @@ class LoginRateLimitIT extends AbstractIamApiIntegrationTest {
     };
   }
 
-  private static String loginBody(String email, String password, String totpCode) {
+  private static String loginBody(String email, String password) {
     return """
         {
           "email": "%s",
-          "password": "%s",
-          "totpCode": "%s"
+          "password": "%s"
         }
         """
-        .formatted(email, password, totpCode);
+        .formatted(email, password);
   }
 }

@@ -27,19 +27,28 @@ export function OperatorSetupScreen({
   const [totpCode, setTotpCode] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const needsTotp = Boolean(enrollment?.totpSecret);
 
   async function handleBeginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsPending(true);
     const result = await onBegin({ setupToken, password });
     setIsPending(false);
-    setMessage(result.ok ? "TOTP enrollment material loaded." : result.error);
+    setMessage(
+      result.ok
+        ? result.data.totpSecret
+          ? "TOTP enrollment material loaded."
+          : "Password captured. Complete setup to activate."
+        : result.error,
+    );
   }
 
   async function handleCompleteSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsPending(true);
-    const result = await onComplete({ setupToken, totpCode });
+    const result = await onComplete(
+      needsTotp ? { setupToken, totpCode } : { setupToken },
+    );
     setIsPending(false);
     setMessage(
       result.ok
@@ -55,8 +64,8 @@ export function OperatorSetupScreen({
         <h2>Bootstrap from the CLI token</h2>
         <p className={styles.lead}>
           Run the setup CLI locally, paste the one-time token here, choose a
-          password, then complete TOTP enrollment. The token is never stored in
-          browser storage.
+          password, then activate. When platform MFA is off, TOTP is not
+          required during setup.
         </p>
         <form className="formStack" onSubmit={handleBeginSubmit}>
           <label className="fieldStack">
@@ -88,34 +97,42 @@ export function OperatorSetupScreen({
       </section>
 
       <section className={`surface ${styles.resultPanel}`}>
-        <h3>TOTP material</h3>
+        <h3>Complete setup</h3>
         {enrollment ? (
           <>
-            <div className={styles.resultGrid}>
-              <article className="surface surfaceInset">
-                <h4 className={styles.cardTitle}>TOTP secret</h4>
-                <pre className={`${styles.codeBlock} ${styles.inlineCode}`}>
-                  {enrollment.totpSecret}
-                </pre>
-              </article>
-              <article className="surface surfaceInset">
-                <h4 className={styles.cardTitle}>otpauth URL</h4>
-                <pre className={`${styles.codeBlock} ${styles.inlineCode}`}>
-                  {enrollment.otpauthUrl}
-                </pre>
-              </article>
-            </div>
+            {needsTotp ? (
+              <div className={styles.resultGrid}>
+                <article className="surface surfaceInset">
+                  <h4 className={styles.cardTitle}>TOTP secret</h4>
+                  <pre className={`${styles.codeBlock} ${styles.inlineCode}`}>
+                    {enrollment.totpSecret}
+                  </pre>
+                </article>
+                <article className="surface surfaceInset">
+                  <h4 className={styles.cardTitle}>otpauth URL</h4>
+                  <pre className={`${styles.codeBlock} ${styles.inlineCode}`}>
+                    {enrollment.otpauthUrl}
+                  </pre>
+                </article>
+              </div>
+            ) : (
+              <p className={styles.emptyState}>
+                Password-only activation. No FactorBinding is required yet.
+              </p>
+            )}
             <form className="formStack" onSubmit={handleCompleteSubmit}>
-              <label className="fieldStack">
-                <span>TOTP code</span>
-                <input
-                  inputMode="numeric"
-                  value={totpCode}
-                  onChange={(event) => setTotpCode(event.target.value)}
-                  placeholder="123456"
-                  required
-                />
-              </label>
+              {needsTotp ? (
+                <label className="fieldStack">
+                  <span>TOTP code</span>
+                  <input
+                    inputMode="numeric"
+                    value={totpCode}
+                    onChange={(event) => setTotpCode(event.target.value)}
+                    placeholder="123456"
+                    required
+                  />
+                </label>
+              ) : null}
               <div className="actions">
                 <button type="submit" disabled={isPending}>
                   {isPending ? "Completing..." : "Complete setup"}
@@ -124,9 +141,7 @@ export function OperatorSetupScreen({
             </form>
           </>
         ) : (
-          <p className={styles.emptyState}>
-            Begin setup first to reveal the TOTP secret and otpauth URL.
-          </p>
+          <p className={styles.emptyState}>Begin setup first to continue.</p>
         )}
         {message ? <p className="statusText">{message}</p> : null}
       </section>

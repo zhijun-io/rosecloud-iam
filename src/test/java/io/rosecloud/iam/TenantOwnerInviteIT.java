@@ -69,8 +69,8 @@ class TenantOwnerInviteIT extends AbstractIamApiIntegrationTest {
                         """
                             .formatted(invitationToken)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.totpSecret").isString())
-            .andExpect(jsonPath("$.otpauthUrl").value(org.hamcrest.Matchers.containsString("otpauth://totp/")))
+            .andExpect(jsonPath("$.totpSecret").doesNotExist())
+            .andExpect(jsonPath("$.otpauthUrl").doesNotExist())
             .andReturn();
 
     assertThat(
@@ -80,8 +80,6 @@ class TenantOwnerInviteIT extends AbstractIamApiIntegrationTest {
                 java.util.UUID.fromString(tenantId)))
         .isEqualTo("PENDING");
 
-    String totpSecret = extractJsonField(beginResult.getResponse().getContentAsString(), "totpSecret");
-
     mockMvc
         .perform(
             post("/api/invitations/accept/complete")
@@ -89,11 +87,10 @@ class TenantOwnerInviteIT extends AbstractIamApiIntegrationTest {
                 .content(
                     """
                     {
-                      "token": "%s",
-                      "totpCode": "%s"
+                      "token": "%s"
                     }
                     """
-                        .formatted(invitationToken, currentTotpCode(totpSecret))))
+                        .formatted(invitationToken)))
         .andExpect(status().isNoContent());
 
     assertThat(

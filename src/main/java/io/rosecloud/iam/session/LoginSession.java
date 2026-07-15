@@ -43,6 +43,9 @@ class LoginSession {
   @Column(name = "expires_at", nullable = false)
   private Instant expiresAt;
 
+  @Column(name = "step_up_satisfied_at")
+  private Instant stepUpSatisfiedAt;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -56,22 +59,40 @@ class LoginSession {
       UUID principalId,
       UUID familyId,
       String refreshTokenHash,
-      Instant expiresAt) {
+      Instant expiresAt,
+      Instant stepUpSatisfiedAt) {
     this.id = UuidV7.next();
     this.principalType = principalType;
     this.principalId = principalId;
     this.familyId = familyId;
     this.refreshTokenHash = refreshTokenHash;
     this.expiresAt = expiresAt;
+    this.stepUpSatisfiedAt = stepUpSatisfiedAt;
   }
 
-  static LoginSession operator(UUID operatorId, String refreshTokenHash, Instant expiresAt) {
+  static LoginSession operator(
+      UUID operatorId, String refreshTokenHash, Instant expiresAt, Instant stepUpSatisfiedAt) {
     return new LoginSession(
-        SessionPrincipalType.OPERATOR, operatorId, UuidV7.next(), refreshTokenHash, expiresAt);
+        SessionPrincipalType.OPERATOR,
+        operatorId,
+        UuidV7.next(),
+        refreshTokenHash,
+        expiresAt,
+        stepUpSatisfiedAt);
   }
 
-  static LoginSession user(UUID userId, UUID familyId, String refreshTokenHash, Instant expiresAt) {
-    return new LoginSession(SessionPrincipalType.USER, userId, familyId, refreshTokenHash, expiresAt);
+  static LoginSession user(
+      UUID userId,
+      UUID familyId,
+      String refreshTokenHash,
+      Instant expiresAt,
+      Instant stepUpSatisfiedAt) {
+    return new LoginSession(
+        SessionPrincipalType.USER, userId, familyId, refreshTokenHash, expiresAt, stepUpSatisfiedAt);
+  }
+
+  Instant stepUpSatisfiedAt() {
+    return stepUpSatisfiedAt;
   }
 
   SessionPrincipalType principalType() {

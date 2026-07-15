@@ -18,6 +18,10 @@ interface LoginSessionRepository extends JpaRepository<LoginSession, UUID> {
   List<LoginSession> findByPrincipalTypeAndPrincipalIdAndRevokedAtIsNullOrderByCreatedAtAsc(
       SessionPrincipalType principalType, UUID principalId);
 
+  Optional<LoginSession>
+      findFirstByPrincipalTypeAndPrincipalIdAndRevokedAtIsNullOrderByStepUpSatisfiedAtDesc(
+          SessionPrincipalType principalType, UUID principalId);
+
   @Modifying
   @Query(
       """

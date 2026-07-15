@@ -1,6 +1,7 @@
 package io.rosecloud.iam.api;
 
 import io.rosecloud.iam.access.AuthorizationException;
+import io.rosecloud.iam.identity.FactorChallengeException;
 import io.rosecloud.iam.identity.GlobalTotpPolicyException;
 import io.rosecloud.iam.identity.LoginRateLimitedException;
 import io.rosecloud.iam.identity.UserAuthenticationException;
@@ -63,6 +64,11 @@ class ApiExceptionHandler {
 
   @ExceptionHandler(GlobalTotpPolicyException.class)
   ResponseEntity<Map<String, String>> handleGlobalTotpPolicy(GlobalTotpPolicyException exception) {
+    return ResponseEntity.status(exception.status()).body(Map.of("error", exception.getMessage()));
+  }
+
+  @ExceptionHandler(FactorChallengeException.class)
+  ResponseEntity<Map<String, String>> handleFactorChallenge(FactorChallengeException exception) {
     return ResponseEntity.status(exception.status()).body(Map.of("error", exception.getMessage()));
   }
 

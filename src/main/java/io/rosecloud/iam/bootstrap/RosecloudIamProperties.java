@@ -12,6 +12,8 @@ public record RosecloudIamProperties(
     Duration invitationTokenTtl,
     Duration refreshReuseGrace,
     Duration refreshTokenTtl,
+    Duration factorChallengeTtl,
+    Duration stepUpWindow,
     int maxSessionsPerUser,
     LoginRateLimit loginRateLimit,
     Mail mail) {

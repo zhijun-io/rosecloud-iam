@@ -42,6 +42,30 @@ export type OperatorLoginRequest = ApiSchemas["OperatorLoginRequest"];
 export type OperatorLoginResponse = ApiSchemas["OperatorLoginResponse"];
 export type UserLoginRequest = ApiSchemas["UserLoginRequest"];
 export type AccessTokenResponse = ApiSchemas["AccessTokenResponse"];
+export type FactorChallengeRequiredResponse =
+  ApiSchemas["FactorChallengeRequiredResponse"];
+export type FactorChallengeRequest = ApiSchemas["FactorChallengeRequest"];
+export type LoginResult =
+  | OperatorLoginResponse
+  | AccessTokenResponse
+  | FactorChallengeRequiredResponse;
+
+export function isFactorChallengeRequired(
+  data: LoginResult,
+): data is FactorChallengeRequiredResponse {
+  return (
+    !!data &&
+    typeof data === "object" &&
+    "status" in data &&
+    data.status === "FACTOR_CHALLENGE_REQUIRED"
+  );
+}
+
+export function hasAccessToken(
+  data: LoginResult,
+): data is OperatorLoginResponse | AccessTokenResponse {
+  return !!data && typeof data === "object" && "accessToken" in data;
+}
 export type CreateTenantRequest = ApiSchemas["CreateTenantRequest"];
 export type CreateTenantResponse = ApiSchemas["CreateTenantResponse"];
 export type InvitationAcceptBeginRequest =
@@ -191,6 +215,20 @@ export const apiClient = {
   operatorLogin(body: OperatorLoginRequest) {
     return request({
       path: "/operator/login",
+      method: "post",
+      body,
+    });
+  },
+  operatorFactorChallenge(body: FactorChallengeRequest) {
+    return request({
+      path: "/operator/factor-challenge",
+      method: "post",
+      body,
+    });
+  },
+  userFactorChallenge(body: FactorChallengeRequest) {
+    return request({
+      path: "/sessions/factor-challenge",
       method: "post",
       body,
     });

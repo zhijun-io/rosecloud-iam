@@ -1,7 +1,10 @@
 package io.rosecloud.iam.operator;
 
 import io.rosecloud.iam.audit.AuditService;
-import io.rosecloud.iam.identity.TotpService;
+import io.rosecloud.iam.identity.FactorChallengeService;
+import io.rosecloud.iam.identity.LoginDecision;
+import io.rosecloud.iam.identity.MfaFeatureService;
+import io.rosecloud.iam.identity.SessionPrincipalKind;
 import io.rosecloud.iam.session.OperatorLoginResult;
 import io.rosecloud.iam.session.OperatorSessionService;
 import io.rosecloud.iam.shared.Sha256Hasher;
@@ -18,27 +21,30 @@ public class OperatorSetupService {
   private final PlatformOperatorRepository platformOperatorRepository;
   private final OperatorSetupTokenRepository operatorSetupTokenRepository;
   private final PasswordEncoder passwordEncoder;
-  private final TotpService totpService;
   private final Sha256Hasher sha256Hasher;
   private final AuditService auditService;
   private final OperatorSessionService operatorSessionService;
+  private final MfaFeatureService mfaFeatureService;
+  private final FactorChallengeService factorChallengeService;
   private final Clock clock;
 
   public OperatorSetupService(
       PlatformOperatorRepository platformOperatorRepository,
       OperatorSetupTokenRepository operatorSetupTokenRepository,
       PasswordEncoder passwordEncoder,
-      TotpService totpService,
       Sha256Hasher sha256Hasher,
       AuditService auditService,
-      OperatorSessionService operatorSessionService) {
+      OperatorSessionService operatorSessionService,
+      MfaFeatureService mfaFeatureService,
+      FactorChallengeService factorChallengeService) {
     this.platformOperatorRepository = platformOperatorRepository;
     this.operatorSetupTokenRepository = operatorSetupTokenRepository;
     this.passwordEncoder = passwordEncoder;
-    this.totpService = totpService;
     this.sha256Hasher = sha256Hasher;
     this.auditService = auditService;
     this.operatorSessionService = operatorSessionService;
+    this.mfaFeatureService = mfaFeatureService;
+    this.factorChallengeService = factorChallengeService;
     this.clock = Clock.systemUTC();
   }
 
@@ -56,22 +62,17 @@ public class OperatorSetupService {
       throw new OperatorSetupRejectedException("operator setup already begun");
     }
 
-    // Replace any abandoned PENDING_TOTP row from a previous incomplete bootstrap.
     platformOperatorRepository.deleteAll();
 
-    TotpService.TotpEnrollment enrollment = totpService.newEnrollment("platform-operator");
     PlatformOperator operator =
         platformOperatorRepository.save(
             new PlatformOperator(
-                passwordEncoder.encode(password),
-                enrollment.encryptedSecret().ciphertext(),
-                enrollment.encryptedSecret().keyId(),
-                OperatorStatus.PENDING_TOTP));
+                passwordEncoder.encode(password), null, null, OperatorStatus.PENDING_TOTP));
 
     token.markBegun();
     auditService.append(AuditService.OPERATOR_SETUP_BEGUN, operator.id(), "operator setup begun");
 
-    return new SetupBeginResult(enrollment.secret(), enrollment.otpauthUrl());
+    return new SetupBeginResult(null, null);
   }
 
   @Transactional
@@ -85,8 +86,9 @@ public class OperatorSetupService {
       throw new OperatorSetupRejectedException(HttpStatus.CONFLICT, "operator setup is not pending");
     }
 
-    if (!totpService.verify(operator.totpSecretKeyId(), operator.totpSecretCiphertext(), totpCode)) {
-      auditService.append(AuditService.OPERATOR_SETUP_REJECTED, operator.id(), "invalid totp");
+    // Optional TOTP binding during setup is reserved for enroll endpoints when MfaFeature is on.
+    // completeSetup always activates after password was set in begin.
+    if (totpCode != null && !totpCode.isBlank() && operator.hasTotpBinding()) {
       throw new OperatorSetupRejectedException(HttpStatus.UNAUTHORIZED, "invalid TOTP code");
     }
 
@@ -97,19 +99,25 @@ public class OperatorSetupService {
   }
 
   @Transactional
-  public OperatorLoginResult login(String password, String totpCode) {
+  public LoginDecision login(String password) {
     PlatformOperator operator = requireOperator();
 
     if (operator.status() != OperatorStatus.ACTIVE
-        || !passwordEncoder.matches(password, operator.passwordHash())
-        || !totpService.verify(operator.totpSecretKeyId(), operator.totpSecretCiphertext(), totpCode)) {
+        || !passwordEncoder.matches(password, operator.passwordHash())) {
       auditService.append(AuditService.OPERATOR_LOGIN_FAILED, operator.id(), "login rejected");
       throw new OperatorAuthenticationException("invalid operator credentials");
     }
 
-    OperatorLoginResult result = operatorSessionService.createSession(operator.id());
+    if (mfaFeatureService.isEnabled() && operator.hasTotpBinding()) {
+      return factorChallengeService.begin(SessionPrincipalKind.OPERATOR, operator.id());
+    }
+
     auditService.append(AuditService.OPERATOR_LOGIN_SUCCEEDED, operator.id(), "login succeeded");
-    return result;
+    return new LoginDecision.SessionReady(operator.id());
+  }
+
+  public OperatorLoginResult issueSession(java.util.UUID operatorId) {
+    return operatorSessionService.createSession(operatorId);
   }
 
   private OperatorSetupToken requireUsableToken(String setupToken, Instant now) {
@@ -120,7 +128,8 @@ public class OperatorSetupService {
         .orElseThrow(
             () -> {
               auditService.append(AuditService.OPERATOR_SETUP_REJECTED, null, "invalid setup token");
-              return new OperatorSetupRejectedException(HttpStatus.UNAUTHORIZED, "invalid setup token");
+              return new OperatorSetupRejectedException(
+                  HttpStatus.UNAUTHORIZED, "invalid setup token");
             });
   }
 

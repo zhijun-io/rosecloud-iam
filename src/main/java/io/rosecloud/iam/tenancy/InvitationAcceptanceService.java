@@ -3,6 +3,7 @@ package io.rosecloud.iam.tenancy;
 import io.rosecloud.iam.audit.AuditService;
 import io.rosecloud.iam.identity.InviteCredentialException;
 import io.rosecloud.iam.identity.InviteCredentialService;
+import io.rosecloud.iam.identity.LoginDecision;
 import io.rosecloud.iam.shared.Sha256Hasher;
 import java.time.Clock;
 import java.time.Instant;
@@ -57,7 +58,7 @@ public class InvitationAcceptanceService {
     Invitation invitation = requireUsableInvitation(token);
     Tenant tenant = requireTenant(invitation);
     try {
-      UUID userId = inviteCredentialService.activatePendingWithTotp(invitation.email(), totpCode);
+      UUID userId = inviteCredentialService.activatePending(invitation.email());
       acceptInvitation(invitation, tenant, userId, true);
     } catch (InviteCredentialException exception) {
       throw new TenancyException(HttpStatus.UNAUTHORIZED, exception.getMessage());
@@ -69,10 +70,13 @@ public class InvitationAcceptanceService {
     Invitation invitation = requireUsableInvitation(token);
     Tenant tenant = requireTenant(invitation);
     try {
-      UUID userId =
-          inviteCredentialService.authenticateActiveUser(
-              invitation.email(), password, totpCode);
-      acceptInvitation(invitation, tenant, userId, false);
+      LoginDecision decision =
+          inviteCredentialService.authenticateActiveUser(invitation.email(), password);
+      if (!(decision instanceof LoginDecision.SessionReady ready)) {
+        throw new TenancyException(
+            HttpStatus.UNAUTHORIZED, "factor challenge required; complete login first");
+      }
+      acceptInvitation(invitation, tenant, ready.principalId(), false);
     } catch (InviteCredentialException exception) {
       throw new TenancyException(HttpStatus.UNAUTHORIZED, exception.getMessage());
     }

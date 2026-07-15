@@ -7,4 +7,4 @@ import jakarta.validation.constraints.Size;
 public record InvitationAcceptJoinRequest(
     @NotBlank String token,
     @NotBlank @Size(min = 12) String password,
-    @NotBlank @Pattern(regexp = "\\d{6}") String totpCode) {}
+    @Pattern(regexp = "\\d{6}") String totpCode) {}

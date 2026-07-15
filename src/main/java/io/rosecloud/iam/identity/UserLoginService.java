@@ -14,54 +14,58 @@ public class UserLoginService {
 
   private final IamUserRepository iamUserRepository;
   private final PasswordEncoder passwordEncoder;
-  private final TotpService totpService;
   private final AuditService auditService;
   private final LoginRateLimiter loginRateLimiter;
+  private final MfaFeatureService mfaFeatureService;
+  private final FactorChallengeService factorChallengeService;
 
   public UserLoginService(
       IamUserRepository iamUserRepository,
       PasswordEncoder passwordEncoder,
-      TotpService totpService,
       AuditService auditService,
-      LoginRateLimiter loginRateLimiter) {
+      LoginRateLimiter loginRateLimiter,
+      MfaFeatureService mfaFeatureService,
+      FactorChallengeService factorChallengeService) {
     this.iamUserRepository = iamUserRepository;
     this.passwordEncoder = passwordEncoder;
-    this.totpService = totpService;
     this.auditService = auditService;
     this.loginRateLimiter = loginRateLimiter;
+    this.mfaFeatureService = mfaFeatureService;
+    this.factorChallengeService = factorChallengeService;
   }
 
-  /**
-   * Validates credentials and returns the authenticated User id. Session creation stays in session.
-   * Applies progressive login cooldown keyed by email + client IP.
-   */
-  @Transactional(readOnly = true)
-  public UUID authenticate(String email, String password, String totpCode, String clientIp) {
+  @Transactional
+  public LoginDecision login(String email, String password, String clientIp) {
     loginRateLimiter.assertAllowed(email, clientIp);
     try {
-      UUID userId = verifyCredentials(email, password, totpCode);
-      loginRateLimiter.recordSuccess(email, clientIp);
-      return userId;
+      LoginDecision decision = verify(email, password);
+      if (decision instanceof LoginDecision.SessionReady) {
+        loginRateLimiter.recordSuccess(email, clientIp);
+      }
+      return decision;
     } catch (UserAuthenticationException exception) {
       loginRateLimiter.recordFailure(email, clientIp);
       throw exception;
     }
   }
 
-  private UUID verifyCredentials(String email, String password, String totpCode) {
+  private LoginDecision verify(String email, String password) {
     IamUser user =
         iamUserRepository.findByEmailIgnoreCase(email.trim().toLowerCase(Locale.ROOT)).orElse(null);
 
     if (user == null
         || user.status() != UserStatus.ACTIVE
-        || !passwordEncoder.matches(password, user.passwordHash())
-        || !totpService.verify(user.totpSecretKeyId(), user.totpSecretCiphertext(), totpCode)) {
+        || !passwordEncoder.matches(password, user.passwordHash())) {
       auditService.append(
           AuditService.USER_LOGIN_FAILED, user == null ? null : user.id(), "login rejected");
       throw new UserAuthenticationException(GENERIC_FAILURE);
     }
 
+    if (mfaFeatureService.isEnabled() && user.hasTotpBinding()) {
+      return factorChallengeService.begin(SessionPrincipalKind.USER, user.id());
+    }
+
     auditService.append(AuditService.USER_LOGIN_SUCCEEDED, user.id(), "login succeeded");
-    return user.id();
+    return new LoginDecision.SessionReady(user.id());
   }
 }
