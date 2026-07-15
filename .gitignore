@@ -1,0 +1,12 @@
+.git
+target
+.idea
+*.iml
+.classpath
+.project
+.settings
+.DS_Store
+frontend/node_modules
+frontend/dist
+frontend/src/generated
+.vscode

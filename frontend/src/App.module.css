@@ -1,0 +1,23 @@
+.shell {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.02em;
+  color: #1a1a1a;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+}
+
+.copy {
+  margin: 0;
+  max-width: 36rem;
+  line-height: 1.5;
+  color: #4a4540;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+}

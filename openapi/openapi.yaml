@@ -1,0 +1,23 @@
+openapi: 3.1.0
+info:
+  title: RoseCloud IAM API
+  version: 0.0.1
+  description: Placeholder contract for I0 OpenAPI client generation. Paths will be replaced by domain APIs in later tickets.
+servers:
+  - url: /api
+paths:
+  /_skeleton/ping:
+    get:
+      operationId: skeletonPing
+      summary: Placeholder operation so the client generator has a typed surface
+      responses:
+        "200":
+          description: Placeholder success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]

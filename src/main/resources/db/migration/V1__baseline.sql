@@ -1,0 +1,1 @@
+-- I0 baseline: schema evolves in later tickets; validate mode requires Flyway ownership of DDL.
