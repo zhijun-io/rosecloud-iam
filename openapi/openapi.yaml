@@ -420,11 +420,11 @@ paths:
         - bearerAuth: []
       responses:
         "200":
-          description: Enrollment material
+          description: FactorBinding material
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FactorEnrollmentBeginResponse"
+                $ref: "#/components/schemas/FactorBindingBeginResponse"
   /operator/factors/totp/complete:
     post:
       operationId: operatorFactorTotpComplete
@@ -436,7 +436,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/FactorEnrollmentCompleteRequest"
+              $ref: "#/components/schemas/FactorBindingCompleteRequest"
       responses:
         "200":
           description: One-time recovery codes
@@ -466,6 +466,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RecoveryCodesResponse"
+  /operator/operators/{operatorId}/mfa-reset:
+    post:
+      operationId: operatorResetOperatorMfa
+      summary: Operator reset of another Operator FactorBinding and RecoveryCode
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: operatorId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaResetRequest"
+      responses:
+        "204":
+          description: Credentials reset
   /operator/users/{userId}/mfa-reset:
     post:
       operationId: operatorResetUserMfa
@@ -517,11 +539,11 @@ paths:
         - bearerAuth: []
       responses:
         "200":
-          description: Enrollment material
+          description: FactorBinding material
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FactorEnrollmentBeginResponse"
+                $ref: "#/components/schemas/FactorBindingBeginResponse"
   /me/factors/totp/complete:
     post:
       operationId: meFactorTotpComplete
@@ -533,7 +555,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/FactorEnrollmentCompleteRequest"
+              $ref: "#/components/schemas/FactorBindingCompleteRequest"
       responses:
         "200":
           description: One-time recovery codes
@@ -812,7 +834,7 @@ components:
         enabled:
           type: boolean
       required: [enabled]
-    FactorEnrollmentBeginResponse:
+    FactorBindingBeginResponse:
       type: object
       properties:
         totpSecret:
@@ -820,7 +842,7 @@ components:
         otpauthUrl:
           type: string
       required: [totpSecret, otpauthUrl]
-    FactorEnrollmentCompleteRequest:
+    FactorBindingCompleteRequest:
       type: object
       properties:
         totpCode:

@@ -15,14 +15,10 @@ public class StepUpGate {
     this.sessionStepUpPort = sessionStepUpPort;
   }
 
-  public void requireRecentReauth(Authentication authentication) {
+  public void requireRecentStepUp(Authentication authentication) {
     PrincipalRef principal = resolve(authentication);
-    sessionStepUpPort.requireRecentReauth(principal.type(), principal.id());
-  }
-
-  /** @deprecated Prefer {@link #requireRecentReauth(Authentication)} */
-  public void requireRecentPasswordAndTotp(Authentication authentication) {
-    requireRecentReauth(authentication);
+    sessionStepUpPort.requireRecentStepUp(
+        principal.type(), principal.id(), principal.sessionId());
   }
 
   private PrincipalRef resolve(Authentication authentication) {
@@ -31,16 +27,18 @@ public class StepUpGate {
     }
     Object principal = authentication.getPrincipal();
     if (principal instanceof OperatorPrincipal operatorPrincipal) {
-      return new PrincipalRef("OPERATOR", operatorPrincipal.operatorId());
+      return new PrincipalRef(
+          "OPERATOR", operatorPrincipal.operatorId(), operatorPrincipal.sessionId());
     }
     if (principal instanceof UserPrincipal userPrincipal) {
-      return new PrincipalRef("USER", userPrincipal.userId());
+      return new PrincipalRef("USER", userPrincipal.userId(), userPrincipal.sessionId());
     }
     if (principal instanceof TenantPrincipal tenantPrincipal) {
-      return new PrincipalRef("USER", tenantPrincipal.userId());
+      return new PrincipalRef(
+          "USER", tenantPrincipal.userId(), tenantPrincipal.sessionId());
     }
     throw new AuthorizationException(HttpStatus.UNAUTHORIZED, "step-up required");
   }
 
-  private record PrincipalRef(String type, UUID id) {}
+  private record PrincipalRef(String type, UUID id, UUID sessionId) {}
 }

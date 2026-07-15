@@ -396,6 +396,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/operator/operators/{operatorId}/mfa-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Operator reset of another Operator FactorBinding and RecoveryCode */
+        post: operations["operatorResetOperatorMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/operator/users/{userId}/mfa-reset": {
         parameters: {
             query?: never;
@@ -626,11 +643,11 @@ export interface components {
         MfaFeatureResponse: {
             enabled: boolean;
         };
-        FactorEnrollmentBeginResponse: {
+        FactorBindingBeginResponse: {
             totpSecret: string;
             otpauthUrl: string;
         };
-        FactorEnrollmentCompleteRequest: {
+        FactorBindingCompleteRequest: {
             totpCode: string;
         };
         RecoveryCodesResponse: {
@@ -1276,13 +1293,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Enrollment material */
+            /** @description FactorBinding material */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FactorEnrollmentBeginResponse"];
+                    "application/json": components["schemas"]["FactorBindingBeginResponse"];
                 };
             };
         };
@@ -1296,7 +1313,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["FactorEnrollmentCompleteRequest"];
+                "application/json": components["schemas"]["FactorBindingCompleteRequest"];
             };
         };
         responses: {
@@ -1346,6 +1363,30 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RecoveryCodesResponse"];
                 };
+            };
+        };
+    };
+    operatorResetOperatorMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                operatorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Credentials reset */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1407,13 +1448,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Enrollment material */
+            /** @description FactorBinding material */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FactorEnrollmentBeginResponse"];
+                    "application/json": components["schemas"]["FactorBindingBeginResponse"];
                 };
             };
         };
@@ -1427,7 +1468,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["FactorEnrollmentCompleteRequest"];
+                "application/json": components["schemas"]["FactorBindingCompleteRequest"];
             };
         };
         responses: {

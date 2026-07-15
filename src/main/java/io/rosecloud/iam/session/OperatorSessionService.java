@@ -41,10 +41,12 @@ public class OperatorSessionService {
 
     Instant now = Instant.now(clock);
     Instant expiresAt = now.plus(properties.refreshTokenTtl());
-    loginSessionRepository.save(
-        LoginSession.operator(operatorId, sha256Hasher.hash(refreshToken), expiresAt, now));
+    LoginSession session =
+        loginSessionRepository.save(
+            LoginSession.operator(operatorId, sha256Hasher.hash(refreshToken), expiresAt, now));
 
-    JwtIssuer.IssuedAccessToken accessToken = jwtIssuer.issueOperatorToken(operatorId);
+    JwtIssuer.IssuedAccessToken accessToken =
+        jwtIssuer.issueOperatorToken(operatorId, session.id());
     return new OperatorLoginResult(
         accessToken.value(), refreshToken, accessToken.expiresInSeconds());
   }

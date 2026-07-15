@@ -95,7 +95,7 @@ class TenantController {
       Authentication authentication, @PathVariable UUID tenantId, @PathVariable UUID userId) {
     tenantPermissionGuard.requirePermission(
         authentication, tenantId, Permissions.TENANT_INVITE.code());
-    stepUpGate.requireRecentPasswordAndTotp(authentication);
+    stepUpGate.requireRecentStepUp(authentication);
     globalTotpPolicyService.rejectTenantScopedReset(tenantId, userId);
     return ResponseEntity.noContent().build();
   }

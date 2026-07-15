@@ -3,7 +3,7 @@ package io.rosecloud.iam.api;
 import io.rosecloud.iam.access.StepUpGate;
 import io.rosecloud.iam.access.TenantPrincipal;
 import io.rosecloud.iam.access.UserPrincipal;
-import io.rosecloud.iam.identity.FactorEnrollmentService;
+import io.rosecloud.iam.identity.FactorBindingService;
 import io.rosecloud.iam.identity.TotpService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -21,43 +21,43 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/me/factors")
 class MeFactorController {
 
-  private final FactorEnrollmentService factorEnrollmentService;
+  private final FactorBindingService factorBindingService;
   private final StepUpGate stepUpGate;
 
-  MeFactorController(FactorEnrollmentService factorEnrollmentService, StepUpGate stepUpGate) {
-    this.factorEnrollmentService = factorEnrollmentService;
+  MeFactorController(FactorBindingService factorBindingService, StepUpGate stepUpGate) {
+    this.factorBindingService = factorBindingService;
     this.stepUpGate = stepUpGate;
   }
 
   @PostMapping("/totp/begin")
-  FactorEnrollmentBeginResponse beginTotp(Authentication authentication) {
-    stepUpGate.requireRecentReauth(authentication);
+  FactorBindingBeginResponse beginTotp(Authentication authentication) {
+    stepUpGate.requireRecentStepUp(authentication);
     TotpService.TotpEnrollment enrollment =
-        factorEnrollmentService.beginTotp(requireUserId(authentication));
-    return new FactorEnrollmentBeginResponse(enrollment.secret(), enrollment.otpauthUrl());
+        factorBindingService.beginTotp(requireUserId(authentication));
+    return new FactorBindingBeginResponse(enrollment.secret(), enrollment.otpauthUrl());
   }
 
   @PostMapping("/totp/complete")
   RecoveryCodesResponse completeTotp(
-      Authentication authentication, @Valid @RequestBody FactorEnrollmentCompleteRequest request) {
-    stepUpGate.requireRecentReauth(authentication);
+      Authentication authentication, @Valid @RequestBody FactorBindingCompleteRequest request) {
+    stepUpGate.requireRecentStepUp(authentication);
     List<String> codes =
-        factorEnrollmentService.completeTotp(requireUserId(authentication), request.totpCode());
+        factorBindingService.completeTotp(requireUserId(authentication), request.totpCode());
     return new RecoveryCodesResponse(codes);
   }
 
   @DeleteMapping("/totp")
   ResponseEntity<Void> revokeTotp(Authentication authentication) {
-    stepUpGate.requireRecentReauth(authentication);
-    factorEnrollmentService.revokeTotp(requireUserId(authentication));
+    stepUpGate.requireRecentStepUp(authentication);
+    factorBindingService.revokeTotp(requireUserId(authentication));
     return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/recovery-codes")
   RecoveryCodesResponse regenerateRecoveryCodes(Authentication authentication) {
-    stepUpGate.requireRecentReauth(authentication);
+    stepUpGate.requireRecentStepUp(authentication);
     return new RecoveryCodesResponse(
-        factorEnrollmentService.regenerateRecoveryCodes(requireUserId(authentication)));
+        factorBindingService.regenerateRecoveryCodes(requireUserId(authentication)));
   }
 
   private UUID requireUserId(Authentication authentication) {

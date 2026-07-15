@@ -2,7 +2,6 @@ package io.rosecloud.iam.operator;
 
 import io.rosecloud.iam.identity.OperatorTotpBindingPort;
 import io.rosecloud.iam.identity.TotpService;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -21,14 +20,6 @@ class OperatorTotpBindingAdapter implements OperatorTotpBindingPort {
   @Override
   public boolean hasBinding(UUID operatorId) {
     return platformOperatorRepository.findById(operatorId).filter(PlatformOperator::hasTotpBinding).isPresent();
-  }
-
-  @Override
-  public Optional<String> ciphertextHint(UUID operatorId) {
-    return platformOperatorRepository
-        .findById(operatorId)
-        .filter(PlatformOperator::hasTotpBinding)
-        .map(PlatformOperator::totpSecretCiphertext);
   }
 
   @Override

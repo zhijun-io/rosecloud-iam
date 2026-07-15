@@ -1,17 +1,17 @@
 package io.rosecloud.iam.api;
 
+import io.rosecloud.iam.access.OperatorPrincipal;
 import io.rosecloud.iam.access.StepUpGate;
 import io.rosecloud.iam.audit.AuditService;
+import io.rosecloud.iam.identity.FactorBindingService;
 import io.rosecloud.iam.identity.FactorChallengeService;
 import io.rosecloud.iam.identity.LoginDecision;
 import io.rosecloud.iam.identity.MfaFeatureService;
-import io.rosecloud.iam.identity.SessionPrincipalKind;
-import io.rosecloud.iam.access.OperatorPrincipal;
-import io.rosecloud.iam.identity.FactorEnrollmentService;
 import io.rosecloud.iam.identity.TotpService;
 import io.rosecloud.iam.operator.OperatorFactorService;
 import io.rosecloud.iam.operator.OperatorSetupService;
 import io.rosecloud.iam.session.OperatorLoginResult;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +38,7 @@ class OperatorController {
   private final FactorChallengeService factorChallengeService;
   private final MfaFeatureService mfaFeatureService;
   private final OperatorFactorService operatorFactorService;
-  private final FactorEnrollmentService factorEnrollmentService;
+  private final FactorBindingService factorBindingService;
   private final StepUpGate stepUpGate;
   private final AuditService auditService;
 
@@ -48,7 +48,7 @@ class OperatorController {
       FactorChallengeService factorChallengeService,
       MfaFeatureService mfaFeatureService,
       OperatorFactorService operatorFactorService,
-      FactorEnrollmentService factorEnrollmentService,
+      FactorBindingService factorBindingService,
       StepUpGate stepUpGate,
       AuditService auditService) {
     this.operatorSetupService = operatorSetupService;
@@ -56,7 +56,7 @@ class OperatorController {
     this.factorChallengeService = factorChallengeService;
     this.mfaFeatureService = mfaFeatureService;
     this.operatorFactorService = operatorFactorService;
-    this.factorEnrollmentService = factorEnrollmentService;
+    this.factorBindingService = factorBindingService;
     this.stepUpGate = stepUpGate;
     this.auditService = auditService;
   }
@@ -91,13 +91,14 @@ class OperatorController {
 
   @PostMapping("/factor-challenge")
   ResponseEntity<OperatorLoginResponse> completeFactorChallenge(
-      @Valid @RequestBody FactorChallengeRequest request) {
+      @Valid @RequestBody FactorChallengeRequest request, HttpServletRequest httpRequest) {
     UUID operatorId =
         factorChallengeService.verify(
             request.challengeId(),
             request.bindingId(),
             request.totpCode(),
-            request.recoveryCode());
+            request.recoveryCode(),
+            httpRequest.getRemoteAddr());
     auditService.append(AuditService.OPERATOR_LOGIN_SUCCEEDED, operatorId, "login succeeded");
     OperatorLoginResult result = operatorSetupService.issueSession(operatorId);
     return ResponseEntity.ok()
@@ -113,29 +114,35 @@ class OperatorController {
   @PutMapping("/mfa-feature")
   ResponseEntity<Map<String, Boolean>> setMfaFeature(
       @Valid @RequestBody MfaFeatureRequest request, Authentication authentication) {
-    stepUpGate.requireRecentReauth(authentication);
+    stepUpGate.requireRecentStepUp(authentication);
     boolean from = mfaFeatureService.isEnabled();
     boolean to = request.enabled();
     mfaFeatureService.setEnabled(to);
     auditService.append(
         "mfa.feature_changed",
         operatorId(authentication),
-        "mfaFeature " + from + " -> " + to + "; reason=" + request.reason());
+        "mfaFeature "
+            + from
+            + " -> "
+            + to
+            + "; reason="
+            + request.reason()
+            + "; stepUp=satisfied");
     return ResponseEntity.ok(Map.of("enabled", to));
   }
 
   @PostMapping("/factors/totp/begin")
-  FactorEnrollmentBeginResponse beginTotp(Authentication authentication) {
-    stepUpGate.requireRecentReauth(authentication);
+  FactorBindingBeginResponse beginTotp(Authentication authentication) {
+    stepUpGate.requireRecentStepUp(authentication);
     TotpService.TotpEnrollment enrollment =
         operatorFactorService.beginTotp(operatorId(authentication));
-    return new FactorEnrollmentBeginResponse(enrollment.secret(), enrollment.otpauthUrl());
+    return new FactorBindingBeginResponse(enrollment.secret(), enrollment.otpauthUrl());
   }
 
   @PostMapping("/factors/totp/complete")
   RecoveryCodesResponse completeTotp(
-      Authentication authentication, @Valid @RequestBody FactorEnrollmentCompleteRequest request) {
-    stepUpGate.requireRecentReauth(authentication);
+      Authentication authentication, @Valid @RequestBody FactorBindingCompleteRequest request) {
+    stepUpGate.requireRecentStepUp(authentication);
     List<String> codes =
         operatorFactorService.completeTotp(operatorId(authentication), request.totpCode());
     return new RecoveryCodesResponse(codes);
@@ -143,14 +150,14 @@ class OperatorController {
 
   @DeleteMapping("/factors/totp")
   ResponseEntity<Void> revokeTotp(Authentication authentication) {
-    stepUpGate.requireRecentReauth(authentication);
+    stepUpGate.requireRecentStepUp(authentication);
     operatorFactorService.revokeTotp(operatorId(authentication));
     return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/factors/recovery-codes")
   RecoveryCodesResponse regenerateRecoveryCodes(Authentication authentication) {
-    stepUpGate.requireRecentReauth(authentication);
+    stepUpGate.requireRecentStepUp(authentication);
     return new RecoveryCodesResponse(
         operatorFactorService.regenerateRecoveryCodes(operatorId(authentication)));
   }
@@ -160,12 +167,26 @@ class OperatorController {
       @PathVariable UUID userId,
       @Valid @RequestBody MfaResetRequest request,
       Authentication authentication) {
-    stepUpGate.requireRecentReauth(authentication);
-    factorEnrollmentService.operatorReset(userId, request.reason());
+    stepUpGate.requireRecentStepUp(authentication);
+    factorBindingService.operatorReset(userId, request.reason());
     auditService.append(
         "factor.operator_reset_requested",
         operatorId(authentication),
-        "reset user " + userId + "; reason=" + request.reason());
+        "reset user " + userId + "; reason=" + request.reason() + "; stepUp=satisfied");
+    return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/operators/{operatorId}/mfa-reset")
+  ResponseEntity<Void> resetOperatorMfa(
+      @PathVariable UUID operatorId,
+      @Valid @RequestBody MfaResetRequest request,
+      Authentication authentication) {
+    stepUpGate.requireRecentStepUp(authentication);
+    operatorFactorService.resetCredentials(operatorId, request.reason());
+    auditService.append(
+        "factor.operator_reset_requested",
+        operatorId(authentication),
+        "reset operator " + operatorId + "; reason=" + request.reason() + "; stepUp=satisfied");
     return ResponseEntity.noContent().build();
   }
 

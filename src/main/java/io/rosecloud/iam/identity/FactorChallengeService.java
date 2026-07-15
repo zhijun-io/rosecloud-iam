@@ -17,6 +17,7 @@ public class FactorChallengeService {
   private final OperatorTotpBindingPort operatorTotpBindingPort;
   private final TotpService totpService;
   private final RecoveryCodeService recoveryCodeService;
+  private final LoginRateLimiter loginRateLimiter;
   private final RosecloudIamProperties properties;
   private final Clock clock = Clock.systemUTC();
 
@@ -26,12 +27,14 @@ public class FactorChallengeService {
       OperatorTotpBindingPort operatorTotpBindingPort,
       TotpService totpService,
       RecoveryCodeService recoveryCodeService,
+      LoginRateLimiter loginRateLimiter,
       RosecloudIamProperties properties) {
     this.factorChallengeRepository = factorChallengeRepository;
     this.iamUserRepository = iamUserRepository;
     this.operatorTotpBindingPort = operatorTotpBindingPort;
     this.totpService = totpService;
     this.recoveryCodeService = recoveryCodeService;
+    this.loginRateLimiter = loginRateLimiter;
     this.properties = properties;
   }
 
@@ -49,7 +52,8 @@ public class FactorChallengeService {
   }
 
   @Transactional
-  public UUID verify(UUID challengeId, String bindingId, String totpCode, String recoveryCode) {
+  public UUID verify(
+      UUID challengeId, String bindingId, String totpCode, String recoveryCode, String clientIp) {
     Instant now = Instant.now(clock);
     FactorChallenge challenge =
         factorChallengeRepository
@@ -58,24 +62,33 @@ public class FactorChallengeService {
             .orElseThrow(
                 () -> new FactorChallengeException(HttpStatus.UNAUTHORIZED, "invalid challenge"));
 
-    if (recoveryCode != null && !recoveryCode.isBlank()) {
-      if (!recoveryCodeService.consume(
-          challenge.principalType(), challenge.principalId(), recoveryCode)) {
-        throw new FactorChallengeException(HttpStatus.UNAUTHORIZED, "invalid challenge");
+    String rateLimitKey = rateLimitKey(challenge.principalType(), challenge.principalId());
+    loginRateLimiter.assertAllowed(rateLimitKey, clientIp);
+
+    try {
+      if (recoveryCode != null && !recoveryCode.isBlank()) {
+        if (!recoveryCodeService.consume(
+            challenge.principalType(), challenge.principalId(), recoveryCode)) {
+          throw new FactorChallengeException(HttpStatus.UNAUTHORIZED, "invalid challenge");
+        }
+      } else {
+        if (bindingId != null
+            && !bindingId.isBlank()
+            && !bindingId.equals(challenge.principalId().toString())) {
+          throw new FactorChallengeException(HttpStatus.UNAUTHORIZED, "invalid challenge");
+        }
+        if (totpCode == null
+            || !verifyTotp(challenge.principalType(), challenge.principalId(), totpCode)) {
+          throw new FactorChallengeException(HttpStatus.UNAUTHORIZED, "invalid challenge");
+        }
       }
-    } else {
-      if (bindingId != null
-          && !bindingId.isBlank()
-          && !bindingId.equals(challenge.principalId().toString())) {
-        throw new FactorChallengeException(HttpStatus.UNAUTHORIZED, "invalid challenge");
-      }
-      if (totpCode == null
-          || !verifyTotp(challenge.principalType(), challenge.principalId(), totpCode)) {
-        throw new FactorChallengeException(HttpStatus.UNAUTHORIZED, "invalid challenge");
-      }
+    } catch (FactorChallengeException exception) {
+      loginRateLimiter.recordFailure(rateLimitKey, clientIp);
+      throw exception;
     }
 
     challenge.consume(now);
+    loginRateLimiter.recordSuccess(rateLimitKey, clientIp);
     return challenge.principalId();
   }
 
@@ -84,17 +97,24 @@ public class FactorChallengeService {
       case USER -> iamUserRepository
           .findById(principalId)
           .filter(IamUser::hasTotpBinding)
-          .map(u -> List.of(FactorBindingView.totp(u.id(), u.totpSecretCiphertext())))
+          .map(u -> List.of(FactorBindingView.totp(u.id())))
           .orElse(List.of());
       case OPERATOR -> {
         if (!operatorTotpBindingPort.hasBinding(principalId)) {
           yield List.of();
         }
-        yield List.of(
-            FactorBindingView.totp(
-                principalId,
-                operatorTotpBindingPort.ciphertextHint(principalId).orElse("****")));
+        yield List.of(FactorBindingView.totp(principalId));
       }
+    };
+  }
+
+  private String rateLimitKey(SessionPrincipalKind kind, UUID principalId) {
+    return switch (kind) {
+      case USER -> iamUserRepository
+          .findById(principalId)
+          .map(IamUser::email)
+          .orElse(principalId.toString());
+      case OPERATOR -> "operator:" + principalId;
     };
   }
 

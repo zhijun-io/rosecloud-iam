@@ -29,13 +29,18 @@ public class TenantContextService {
   }
 
   @Transactional
-  public TenantContextResult selectTenantContext(UUID userId, UUID membershipId) {
+  public TenantContextResult selectTenantContext(
+      UUID userId, UUID sessionId, UUID membershipId) {
     UserMembershipService.ActiveMembership membership =
         userMembershipService.requireActiveMembership(userId, membershipId);
     List<String> permissions = builtinRolePermissions.permissionsFor(membership.roleCode());
     JwtIssuer.IssuedAccessToken accessToken =
         jwtIssuer.issueTenantToken(
-            userId, membership.tenantId(), membership.membershipId(), permissions);
+            userId,
+            sessionId,
+            membership.tenantId(),
+            membership.membershipId(),
+            permissions);
     auditService.append(
         AuditService.USER_TENANT_CONTEXT_SELECTED,
         userId,

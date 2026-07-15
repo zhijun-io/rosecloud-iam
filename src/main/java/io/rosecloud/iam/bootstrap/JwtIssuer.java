@@ -43,26 +43,39 @@ public class JwtIssuer {
     this.keyId = UUID.randomUUID().toString();
   }
 
-  public IssuedAccessToken issueOperatorToken(UUID operatorId) {
+  public IssuedAccessToken issueOperatorToken(UUID operatorId, UUID sessionId) {
     return issueToken(
         new JWTClaimsSet.Builder()
             .subject(operatorId.toString())
-            .claim("typ", "operator"));
+            .claim("typ", "operator")
+            .claim("sid", sessionId.toString()));
   }
 
-  public IssuedAccessToken issueUserToken(UUID userId) {
-    return issueToken(new JWTClaimsSet.Builder().subject(userId.toString()).claim("typ", "user"));
+  public IssuedAccessToken issueUserToken(UUID userId, UUID sessionId) {
+    return issueToken(
+        new JWTClaimsSet.Builder()
+            .subject(userId.toString())
+            .claim("typ", "user")
+            .claim("sid", sessionId.toString()));
   }
 
   public IssuedAccessToken issueTenantToken(
-      UUID userId, UUID tenantId, UUID membershipId, List<String> permissions) {
-    return issueToken(
+      UUID userId,
+      UUID sessionId,
+      UUID tenantId,
+      UUID membershipId,
+      List<String> permissions) {
+    JWTClaimsSet.Builder builder =
         new JWTClaimsSet.Builder()
             .subject(userId.toString())
             .claim("typ", "tenant")
             .claim("tenant_id", tenantId.toString())
             .claim("membership_id", membershipId.toString())
-            .claim("permissions", permissions));
+            .claim("permissions", permissions);
+    if (sessionId != null) {
+      builder.claim("sid", sessionId.toString());
+    }
+    return issueToken(builder);
   }
 
   public Map<String, Object> jwks() {
@@ -95,15 +108,16 @@ public class JwtIssuer {
       }
 
       UUID subjectId = UUID.fromString(subject);
+      UUID sessionId = parseUuidClaim(claims, "sid");
       return switch (typ) {
         case "operator" ->
             Optional.of(
                 new VerifiedAccessToken(
-                    typ, subjectId, null, null, Collections.emptyList()));
+                    typ, subjectId, sessionId, null, null, Collections.emptyList()));
         case "user" ->
             Optional.of(
                 new VerifiedAccessToken(
-                    typ, subjectId, null, null, Collections.emptyList()));
+                    typ, subjectId, sessionId, null, null, Collections.emptyList()));
         case "tenant" -> Optional.of(tenantClaims(claims, subjectId));
         default -> Optional.empty();
       };
@@ -124,9 +138,18 @@ public class JwtIssuer {
     return new VerifiedAccessToken(
         "tenant",
         subjectId,
+        parseUuidClaim(claims, "sid"),
         UUID.fromString(tenantId),
         UUID.fromString(membershipId),
         List.copyOf(permissions));
+  }
+
+  private static UUID parseUuidClaim(JWTClaimsSet claims, String name) throws ParseException {
+    String value = claims.getStringClaim(name);
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+    return UUID.fromString(value);
   }
 
   private IssuedAccessToken issueToken(JWTClaimsSet.Builder claimsBuilder) {
@@ -170,6 +193,7 @@ public class JwtIssuer {
   public record VerifiedAccessToken(
       String typ,
       UUID subjectId,
+      UUID sessionId,
       UUID tenantId,
       UUID membershipId,
       List<String> permissions) {}

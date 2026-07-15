@@ -47,7 +47,8 @@ class MeController {
       Authentication authentication, @Valid @RequestBody TenantContextRequest request) {
     UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
     TenantContextService.TenantContextResult result =
-        tenantContextService.selectTenantContext(principal.userId(), request.membershipId());
+        tenantContextService.selectTenantContext(
+            principal.userId(), principal.sessionId(), request.membershipId());
     return ResponseEntity.ok(
         new TenantContextResponse(
             result.accessToken(), "Bearer", result.expiresInSeconds(), result.permissions()));

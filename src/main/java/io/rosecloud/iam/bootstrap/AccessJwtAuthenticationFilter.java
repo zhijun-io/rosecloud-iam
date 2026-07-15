@@ -47,14 +47,15 @@ public class AccessJwtAuthenticationFilter extends OncePerRequestFilter {
     UsernamePasswordAuthenticationToken authentication;
     switch (claims.typ()) {
       case "operator" -> {
-        OperatorPrincipal principal = new OperatorPrincipal(claims.subjectId());
+        OperatorPrincipal principal =
+            new OperatorPrincipal(claims.subjectId(), claims.sessionId());
         authentication =
             new UsernamePasswordAuthenticationToken(
                 principal, token, List.of(new SimpleGrantedAuthority("ROLE_OPERATOR")));
         request.setAttribute("operatorId", claims.subjectId());
       }
       case "user" -> {
-        UserPrincipal principal = new UserPrincipal(claims.subjectId());
+        UserPrincipal principal = new UserPrincipal(claims.subjectId(), claims.sessionId());
         authentication =
             new UsernamePasswordAuthenticationToken(
                 principal, token, List.of(new SimpleGrantedAuthority("ROLE_USER")));
@@ -63,7 +64,11 @@ public class AccessJwtAuthenticationFilter extends OncePerRequestFilter {
       case "tenant" -> {
         TenantPrincipal principal =
             new TenantPrincipal(
-                claims.subjectId(), claims.tenantId(), claims.membershipId(), claims.permissions());
+                claims.subjectId(),
+                claims.sessionId(),
+                claims.tenantId(),
+                claims.membershipId(),
+                claims.permissions());
         authentication =
             new UsernamePasswordAuthenticationToken(
                 principal, token, List.of(new SimpleGrantedAuthority("ROLE_TENANT")));

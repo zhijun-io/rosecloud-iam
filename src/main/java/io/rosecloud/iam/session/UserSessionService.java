@@ -46,11 +46,13 @@ public class UserSessionService {
     Instant now = Instant.now(clock);
     Instant expiresAt = now.plus(properties.refreshTokenTtl());
 
-    loginSessionRepository.save(
-        LoginSession.user(userId, UuidV7.next(), sha256Hasher.hash(refreshToken), expiresAt, now));
+    LoginSession session =
+        loginSessionRepository.save(
+            LoginSession.user(
+                userId, UuidV7.next(), sha256Hasher.hash(refreshToken), expiresAt, now));
     pruneOldestSessions(userId);
 
-    JwtIssuer.IssuedAccessToken accessToken = jwtIssuer.issueUserToken(userId);
+    JwtIssuer.IssuedAccessToken accessToken = jwtIssuer.issueUserToken(userId, session.id());
     return new UserLoginResult(
         accessToken.value(), refreshToken, accessToken.expiresInSeconds());
   }
@@ -83,7 +85,8 @@ public class UserSessionService {
     session.rotate(
         sha256Hasher.hash(nextRefreshToken), now, now.plus(properties.refreshTokenTtl()));
 
-    JwtIssuer.IssuedAccessToken accessToken = jwtIssuer.issueUserToken(session.principalId());
+    JwtIssuer.IssuedAccessToken accessToken =
+        jwtIssuer.issueUserToken(session.principalId(), session.id());
     auditService.append(
         AuditService.USER_REFRESH_SUCCEEDED, session.principalId(), "refresh token rotated");
     return new UserRefreshResult(

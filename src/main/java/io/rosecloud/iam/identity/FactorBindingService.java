@@ -1,5 +1,6 @@
 package io.rosecloud.iam.identity;
 
+import io.rosecloud.iam.access.SessionRevocationPort;
 import io.rosecloud.iam.audit.AuditService;
 import io.rosecloud.iam.shared.TotpSecretCrypto;
 import java.util.List;
@@ -9,30 +10,33 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class FactorEnrollmentService {
+public class FactorBindingService {
 
   private final IamUserRepository iamUserRepository;
   private final TotpService totpService;
   private final MfaFeatureService mfaFeatureService;
   private final RecoveryCodeService recoveryCodeService;
+  private final SessionRevocationPort sessionRevocationPort;
   private final AuditService auditService;
 
-  public FactorEnrollmentService(
+  public FactorBindingService(
       IamUserRepository iamUserRepository,
       TotpService totpService,
       MfaFeatureService mfaFeatureService,
       RecoveryCodeService recoveryCodeService,
+      SessionRevocationPort sessionRevocationPort,
       AuditService auditService) {
     this.iamUserRepository = iamUserRepository;
     this.totpService = totpService;
     this.mfaFeatureService = mfaFeatureService;
     this.recoveryCodeService = recoveryCodeService;
+    this.sessionRevocationPort = sessionRevocationPort;
     this.auditService = auditService;
   }
 
   @Transactional
   public TotpService.TotpEnrollment beginTotp(UUID userId) {
-    requireMfaOnForEnrollment();
+    requireMfaOnForBinding();
     IamUser user = requireActive(userId);
     if (user.hasTotpBinding()) {
       throw new FactorChallengeException(HttpStatus.CONFLICT, "factor binding already present");
@@ -45,10 +49,10 @@ public class FactorEnrollmentService {
 
   @Transactional
   public List<String> completeTotp(UUID userId, String totpCode) {
-    requireMfaOnForEnrollment();
+    requireMfaOnForBinding();
     IamUser user = requireActive(userId);
     if (!user.hasPendingTotp()) {
-      throw new FactorChallengeException(HttpStatus.CONFLICT, "no pending enrollment");
+      throw new FactorChallengeException(HttpStatus.CONFLICT, "no pending factor binding");
     }
     if (!totpService.verify(
         user.pendingTotpSecretKeyId(), user.pendingTotpSecretCiphertext(), totpCode)) {
@@ -57,6 +61,7 @@ public class FactorEnrollmentService {
     user.bindTotp(user.pendingTotpSecretCiphertext(), user.pendingTotpSecretKeyId());
     List<String> recoveryCodes =
         recoveryCodeService.replaceAll(SessionPrincipalKind.USER, userId);
+    sessionRevocationPort.revokeAllForPrincipal("USER", userId);
     auditService.append("factor.binding_created", userId, "totp binding created");
     return recoveryCodes;
   }
@@ -69,6 +74,7 @@ public class FactorEnrollmentService {
     }
     user.clearTotp();
     recoveryCodeService.revokeAll(SessionPrincipalKind.USER, userId);
+    sessionRevocationPort.revokeAllForPrincipal("USER", userId);
     auditService.append("factor.binding_revoked", userId, "totp binding revoked");
   }
 
@@ -79,6 +85,7 @@ public class FactorEnrollmentService {
       throw new FactorChallengeException(HttpStatus.CONFLICT, "no factor binding");
     }
     List<String> codes = recoveryCodeService.replaceAll(SessionPrincipalKind.USER, userId);
+    sessionRevocationPort.revokeAllForPrincipal("USER", userId);
     auditService.append("recovery_code.regenerated", userId, "recovery codes regenerated");
     return codes;
   }
@@ -91,11 +98,12 @@ public class FactorEnrollmentService {
             .orElseThrow(() -> new FactorChallengeException(HttpStatus.NOT_FOUND, "user not found"));
     user.clearTotp();
     recoveryCodeService.revokeAll(SessionPrincipalKind.USER, userId);
+    sessionRevocationPort.revokeAllForPrincipal("USER", userId);
     auditService.append(
         "factor.operator_reset", userId, "operator reset mfa credentials; reason=" + reason);
   }
 
-  private void requireMfaOnForEnrollment() {
+  private void requireMfaOnForBinding() {
     if (!mfaFeatureService.isEnabled()) {
       throw new FactorChallengeException(
           HttpStatus.CONFLICT, "mfa feature disabled; cannot create factor binding");

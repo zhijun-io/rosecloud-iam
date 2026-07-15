@@ -95,6 +95,10 @@ class LoginSession {
     return stepUpSatisfiedAt;
   }
 
+  UUID id() {
+    return id;
+  }
+
   SessionPrincipalType principalType() {
     return principalType;
   }

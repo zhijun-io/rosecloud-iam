@@ -64,13 +64,14 @@ class SessionController {
 
   @PostMapping("/factor-challenge")
   ResponseEntity<AccessTokenResponse> completeFactorChallenge(
-      @Valid @RequestBody FactorChallengeRequest request) {
+      @Valid @RequestBody FactorChallengeRequest request, HttpServletRequest httpRequest) {
     UUID userId =
         factorChallengeService.verify(
             request.challengeId(),
             request.bindingId(),
             request.totpCode(),
-            request.recoveryCode());
+            request.recoveryCode(),
+            httpRequest.getRemoteAddr());
     auditService.append(AuditService.USER_LOGIN_SUCCEEDED, userId, "login succeeded");
     UserLoginResult result = userSessionService.createSession(userId);
     return ResponseEntity.ok()
