@@ -40,16 +40,16 @@ public class OperatorFactorService {
   }
 
   @Transactional
-  public TotpService.TotpEnrollment beginTotp(UUID operatorId) {
+  public TotpService.TotpBindMaterial beginTotp(UUID operatorId) {
     requireMfaOnForBinding();
     PlatformOperator operator = requireActive(operatorId);
     if (operator.hasTotpBinding()) {
       throw new FactorChallengeException(HttpStatus.CONFLICT, "factor binding already present");
     }
-    TotpService.TotpEnrollment enrollment = totpService.newEnrollment("platform-operator");
-    TotpSecretCrypto.EncryptedSecret encrypted = enrollment.encryptedSecret();
+    TotpService.TotpBindMaterial material = totpService.beginBind("platform-operator");
+    TotpSecretCrypto.EncryptedSecret encrypted = material.encryptedSecret();
     operator.beginPendingTotp(encrypted.ciphertext(), encrypted.keyId());
-    return enrollment;
+    return material;
   }
 
   @Transactional

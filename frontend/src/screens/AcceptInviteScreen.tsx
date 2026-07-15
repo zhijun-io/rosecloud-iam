@@ -41,7 +41,7 @@ export function AcceptInviteScreen({
     setMessage(
       result.ok
         ? result.data.totpSecret
-          ? "Invite begin succeeded. Finish TOTP below."
+          ? "Invite begin succeeded. Finish TOTP bind below."
           : "Password captured. Complete accept to activate."
         : result.error,
     );
@@ -131,7 +131,7 @@ export function AcceptInviteScreen({
                 </>
               ) : (
                 <p className={styles.emptyState}>
-                  Password-only activation. No TOTP enrollment in this flow.
+                  Password-only activation. FactorBinding is optional after accept.
                 </p>
               )}
               <form className="formStack" onSubmit={handleComplete}>

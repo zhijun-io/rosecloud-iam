@@ -26,7 +26,34 @@ class SessionStepUpAdapter implements SessionStepUpPort {
   public void requireRecentStepUp(String principalType, UUID principalId, UUID sessionId) {
     Instant now = Instant.now(clock);
     Instant earliest = now.minus(properties.stepUpWindow());
+    LoginSession session = requireUsableSession(principalType, principalId, sessionId, now);
 
+    Instant satisfiedAt = session.stepUpSatisfiedAt();
+    if (satisfiedAt == null || satisfiedAt.isBefore(earliest)) {
+      throw new AuthorizationException(
+          HttpStatus.UNAUTHORIZED, "step-up required: StepUp window expired");
+    }
+  }
+
+  @Override
+  public void markSatisfied(UUID sessionId) {
+    Instant now = Instant.now(clock);
+    LoginSession session =
+        loginSessionRepository
+            .findById(sessionId)
+            .orElseThrow(
+                () ->
+                    new AuthorizationException(
+                        HttpStatus.UNAUTHORIZED, "step-up required: unknown session"));
+    if (session.isRevoked() || session.isExpired(now)) {
+      throw new AuthorizationException(
+          HttpStatus.UNAUTHORIZED, "step-up required: session not usable");
+    }
+    session.markStepUpSatisfied(now);
+  }
+
+  private LoginSession requireUsableSession(
+      String principalType, UUID principalId, UUID sessionId, Instant now) {
     if (sessionId == null) {
       throw new AuthorizationException(
           HttpStatus.UNAUTHORIZED, "step-up required: session claim missing");
@@ -47,11 +74,6 @@ class SessionStepUpAdapter implements SessionStepUpPort {
       throw new AuthorizationException(
           HttpStatus.UNAUTHORIZED, "step-up required: session not usable");
     }
-
-    Instant satisfiedAt = session.stepUpSatisfiedAt();
-    if (satisfiedAt == null || satisfiedAt.isBefore(earliest)) {
-      throw new AuthorizationException(
-          HttpStatus.UNAUTHORIZED, "step-up required: StepUp window expired");
-    }
+    return session;
   }
 }

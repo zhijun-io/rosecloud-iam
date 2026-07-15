@@ -96,7 +96,7 @@ public class IamUser {
         && !totpSecretKeyId.isBlank();
   }
 
-  public void replacePendingEnrollment(String passwordHash) {
+  public void replacePendingPassword(String passwordHash) {
     this.passwordHash = passwordHash;
     this.totpSecretCiphertext = null;
     this.totpSecretKeyId = null;

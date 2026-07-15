@@ -124,7 +124,7 @@ export function UserLoginScreen({
       {challenge ? (
         <form className="formStack" onSubmit={handleChallenge}>
           <p className={styles.small}>
-            Challenge {challenge.challengeId}. Bindings:{" "}
+            FactorChallenge {challenge.challengeId}. Bindings:{" "}
             {challenge.bindings.map((binding) => binding.softLabel).join(", ")}
           </p>
           <label className="fieldStack">

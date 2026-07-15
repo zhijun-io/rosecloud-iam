@@ -72,9 +72,9 @@ public class FactorChallengeService {
           throw new FactorChallengeException(HttpStatus.UNAUTHORIZED, "invalid challenge");
         }
       } else {
-        if (bindingId != null
-            && !bindingId.isBlank()
-            && !bindingId.equals(challenge.principalId().toString())) {
+        String expectedBindingId =
+            FactorBindingView.totpBindingId(challenge.principalId()).toString();
+        if (bindingId == null || bindingId.isBlank() || !bindingId.equals(expectedBindingId)) {
           throw new FactorChallengeException(HttpStatus.UNAUTHORIZED, "invalid challenge");
         }
         if (totpCode == null

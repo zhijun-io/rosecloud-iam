@@ -6,4 +6,6 @@ import java.util.UUID;
 public interface SessionStepUpPort {
 
   void requireRecentStepUp(String principalType, UUID principalId, UUID sessionId);
+
+  void markSatisfied(UUID sessionId);
 }

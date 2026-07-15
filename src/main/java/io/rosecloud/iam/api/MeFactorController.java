@@ -31,16 +31,14 @@ class MeFactorController {
 
   @PostMapping("/totp/begin")
   FactorBindingBeginResponse beginTotp(Authentication authentication) {
-    stepUpGate.requireRecentStepUp(authentication);
-    TotpService.TotpEnrollment enrollment =
+    TotpService.TotpBindMaterial material =
         factorBindingService.beginTotp(requireUserId(authentication));
-    return new FactorBindingBeginResponse(enrollment.secret(), enrollment.otpauthUrl());
+    return new FactorBindingBeginResponse(material.secret(), material.otpauthUrl());
   }
 
   @PostMapping("/totp/complete")
   RecoveryCodesResponse completeTotp(
       Authentication authentication, @Valid @RequestBody FactorBindingCompleteRequest request) {
-    stepUpGate.requireRecentStepUp(authentication);
     List<String> codes =
         factorBindingService.completeTotp(requireUserId(authentication), request.totpCode());
     return new RecoveryCodesResponse(codes);
@@ -48,7 +46,6 @@ class MeFactorController {
 
   @DeleteMapping("/totp")
   ResponseEntity<Void> revokeTotp(Authentication authentication) {
-    stepUpGate.requireRecentStepUp(authentication);
     factorBindingService.revokeTotp(requireUserId(authentication));
     return ResponseEntity.noContent().build();
   }

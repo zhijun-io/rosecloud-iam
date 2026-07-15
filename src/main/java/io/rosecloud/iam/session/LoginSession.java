@@ -152,6 +152,10 @@ class LoginSession {
     }
   }
 
+  void markStepUpSatisfied(Instant satisfiedAt) {
+    this.stepUpSatisfiedAt = satisfiedAt;
+  }
+
   @PrePersist
   void onCreate() {
     Instant now = Instant.now();

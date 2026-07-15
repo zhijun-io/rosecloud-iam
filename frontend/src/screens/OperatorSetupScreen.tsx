@@ -37,7 +37,7 @@ export function OperatorSetupScreen({
     setMessage(
       result.ok
         ? result.data.totpSecret
-          ? "TOTP enrollment material loaded."
+          ? "TOTP bind material loaded."
           : "Password captured. Complete setup to activate."
         : result.error,
     );
@@ -117,7 +117,7 @@ export function OperatorSetupScreen({
               </div>
             ) : (
               <p className={styles.emptyState}>
-                Password-only activation. No FactorBinding is required yet.
+                Password-only activation. No FactorBinding is required when MFA is off.
               </p>
             )}
             <form className="formStack" onSubmit={handleCompleteSubmit}>

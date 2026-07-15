@@ -35,16 +35,16 @@ public class FactorBindingService {
   }
 
   @Transactional
-  public TotpService.TotpEnrollment beginTotp(UUID userId) {
+  public TotpService.TotpBindMaterial beginTotp(UUID userId) {
     requireMfaOnForBinding();
     IamUser user = requireActive(userId);
     if (user.hasTotpBinding()) {
       throw new FactorChallengeException(HttpStatus.CONFLICT, "factor binding already present");
     }
-    TotpService.TotpEnrollment enrollment = totpService.newEnrollment(user.email());
-    TotpSecretCrypto.EncryptedSecret encrypted = enrollment.encryptedSecret();
+    TotpService.TotpBindMaterial material = totpService.beginBind(user.email());
+    TotpSecretCrypto.EncryptedSecret encrypted = material.encryptedSecret();
     user.beginPendingTotp(encrypted.ciphertext(), encrypted.keyId());
-    return enrollment;
+    return material;
   }
 
   @Transactional

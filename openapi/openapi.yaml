@@ -360,6 +360,42 @@ paths:
                       type: object
                 required: [keys]
 
+  /operator/step-up:
+    post:
+      operationId: operatorStepUp
+      summary: Begin in-session StepUp (password; may return FactorChallengeRequired)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StepUpPasswordRequest"
+      responses:
+        "200":
+          description: FactorChallenge required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FactorChallengeRequiredResponse"
+        "204":
+          description: StepUp satisfied (password-only)
+  /operator/step-up/factor-challenge:
+    post:
+      operationId: operatorStepUpFactorChallenge
+      summary: Complete FactorChallenge for in-session StepUp
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FactorChallengeRequest"
+      responses:
+        "204":
+          description: StepUp satisfied on current LoginSession
   /operator/factor-challenge:
     post:
       operationId: operatorFactorChallenge
@@ -415,7 +451,7 @@ paths:
   /operator/factors/totp/begin:
     post:
       operationId: operatorFactorTotpBegin
-      summary: Begin voluntary Operator TOTP FactorBinding enrollment
+      summary: Begin voluntary Operator TOTP FactorBinding bind
       security:
         - bearerAuth: []
       responses:
@@ -428,7 +464,7 @@ paths:
   /operator/factors/totp/complete:
     post:
       operationId: operatorFactorTotpComplete
-      summary: Complete Operator TOTP FactorBinding enrollment
+      summary: Complete Operator TOTP FactorBinding bind
       security:
         - bearerAuth: []
       requestBody:
@@ -510,6 +546,42 @@ paths:
       responses:
         "204":
           description: Credentials reset
+  /sessions/step-up:
+    post:
+      operationId: userStepUp
+      summary: Begin in-session StepUp (password; may return FactorChallengeRequired)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StepUpPasswordRequest"
+      responses:
+        "200":
+          description: FactorChallenge required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FactorChallengeRequiredResponse"
+        "204":
+          description: StepUp satisfied (password-only)
+  /sessions/step-up/factor-challenge:
+    post:
+      operationId: userStepUpFactorChallenge
+      summary: Complete FactorChallenge for in-session StepUp
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FactorChallengeRequest"
+      responses:
+        "204":
+          description: StepUp satisfied on current LoginSession
   /sessions/factor-challenge:
     post:
       operationId: userFactorChallenge
@@ -534,7 +606,7 @@ paths:
   /me/factors/totp/begin:
     post:
       operationId: meFactorTotpBegin
-      summary: Begin voluntary User TOTP FactorBinding enrollment
+      summary: Begin voluntary User TOTP FactorBinding bind
       security:
         - bearerAuth: []
       responses:
@@ -547,7 +619,7 @@ paths:
   /me/factors/totp/complete:
     post:
       operationId: meFactorTotpComplete
-      summary: Complete User TOTP FactorBinding enrollment
+      summary: Complete User TOTP FactorBinding bind
       security:
         - bearerAuth: []
       requestBody:
@@ -857,6 +929,12 @@ components:
           items:
             type: string
       required: [recoveryCodes]
+    StepUpPasswordRequest:
+      type: object
+      properties:
+        password:
+          type: string
+      required: [password]
     MfaResetRequest:
       type: object
       properties:

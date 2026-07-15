@@ -32,13 +32,13 @@ public class InviteCredentialService {
   }
 
   @Transactional
-  public EnrollmentBegin beginEnrollment(String email, String password) {
+  public AcceptBegin beginAccept(String email, String password) {
     String normalized = email.trim().toLowerCase(Locale.ROOT);
 
     IamUser user =
         iamUserRepository
             .findByEmailIgnoreCase(normalized)
-            .map(existing -> replacePendingEnrollment(existing, password))
+            .map(existing -> replacePendingPassword(existing, password))
             .orElseGet(
                 () ->
                     new IamUser(
@@ -48,7 +48,7 @@ public class InviteCredentialService {
                         null,
                         UserStatus.PENDING_TOTP));
     iamUserRepository.save(user);
-    return new EnrollmentBegin(null, null);
+    return new AcceptBegin(null, null);
   }
 
   @Transactional
@@ -88,14 +88,14 @@ public class InviteCredentialService {
     return new LoginDecision.SessionReady(user.id());
   }
 
-  private IamUser replacePendingEnrollment(IamUser existing, String password) {
+  private IamUser replacePendingPassword(IamUser existing, String password) {
     if (existing.status() != UserStatus.PENDING_TOTP) {
       throw new InviteCredentialException(GENERIC_REJECTION);
     }
 
-    existing.replacePendingEnrollment(passwordEncoder.encode(password));
+    existing.replacePendingPassword(passwordEncoder.encode(password));
     return existing;
   }
 
-  public record EnrollmentBegin(String totpSecret, String otpauthUrl) {}
+  public record AcceptBegin(String totpSecret, String otpauthUrl) {}
 }

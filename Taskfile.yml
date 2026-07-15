@@ -66,6 +66,14 @@ tasks:
     cmds:
       - ./mvnw -q -DskipTests spring-boot:run -Dspring-boot.run.main-class=io.rosecloud.iam.operator.OperatorSetupCli
 
+  operator:mfa-reset:
+    desc: Local CLI reset of Operator FactorBinding + RecoveryCode (args: OPERATOR_ID REASON)
+    cmds:
+      - >-
+        ./mvnw -q -DskipTests spring-boot:run
+        -Dspring-boot.run.main-class=io.rosecloud.iam.operator.OperatorMfaResetCli
+        -Dspring-boot.run.arguments="{{.OPERATOR_ID}} {{.REASON}}"
+
   run:
     desc: spring-boot:run (depends on up)
     deps: [up]

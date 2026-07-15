@@ -45,9 +45,9 @@ public class InvitationAcceptanceService {
   public BeginAcceptanceResult begin(String token, String password) {
     Invitation invitation = requireUsableInvitation(token);
     try {
-      InviteCredentialService.EnrollmentBegin enrollment =
-          inviteCredentialService.beginEnrollment(invitation.email(), password);
-      return new BeginAcceptanceResult(enrollment.totpSecret(), enrollment.otpauthUrl());
+      InviteCredentialService.AcceptBegin began =
+          inviteCredentialService.beginAccept(invitation.email(), password);
+      return new BeginAcceptanceResult(began.totpSecret(), began.otpauthUrl());
     } catch (InviteCredentialException exception) {
       throw new TenancyException(HttpStatus.UNAUTHORIZED, exception.getMessage());
     }

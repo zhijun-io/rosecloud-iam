@@ -1,11 +1,13 @@
 package io.rosecloud.iam.api;
 
+import io.rosecloud.iam.access.SessionStepUpPort;
 import io.rosecloud.iam.access.TenantPrincipal;
 import io.rosecloud.iam.access.UserPrincipal;
 import io.rosecloud.iam.audit.AuditService;
 import io.rosecloud.iam.identity.FactorChallengeService;
 import io.rosecloud.iam.identity.LoginDecision;
 import io.rosecloud.iam.identity.UserLoginService;
+import io.rosecloud.iam.identity.UserStepUpService;
 import io.rosecloud.iam.session.SessionException;
 import io.rosecloud.iam.session.UserLoginResult;
 import io.rosecloud.iam.session.UserRefreshResult;
@@ -31,6 +33,8 @@ class SessionController {
   private final UserSessionService userSessionService;
   private final RefreshCookieFactory refreshCookieFactory;
   private final FactorChallengeService factorChallengeService;
+  private final UserStepUpService userStepUpService;
+  private final SessionStepUpPort sessionStepUpPort;
   private final AuditService auditService;
 
   SessionController(
@@ -38,11 +42,15 @@ class SessionController {
       UserSessionService userSessionService,
       RefreshCookieFactory refreshCookieFactory,
       FactorChallengeService factorChallengeService,
+      UserStepUpService userStepUpService,
+      SessionStepUpPort sessionStepUpPort,
       AuditService auditService) {
     this.userLoginService = userLoginService;
     this.userSessionService = userSessionService;
     this.refreshCookieFactory = refreshCookieFactory;
     this.factorChallengeService = factorChallengeService;
+    this.userStepUpService = userStepUpService;
+    this.sessionStepUpPort = sessionStepUpPort;
     this.auditService = auditService;
   }
 
@@ -79,6 +87,39 @@ class SessionController {
         .body(new AccessTokenResponse(result.accessToken(), "Bearer", result.expiresInSeconds()));
   }
 
+  @PostMapping("/step-up")
+  ResponseEntity<?> beginStepUp(
+      @Valid @RequestBody StepUpPasswordRequest request, Authentication authentication) {
+    UserPrincipal principal = requireUserPrincipal(authentication);
+    LoginDecision decision = userStepUpService.begin(principal.userId(), request.password());
+    if (decision instanceof LoginDecision.ChallengeRequired challenge) {
+      return ResponseEntity.ok(
+          FactorChallengeRequiredResponse.of(challenge.challengeId(), challenge.bindings()));
+    }
+    sessionStepUpPort.markSatisfied(principal.sessionId());
+    return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/step-up/factor-challenge")
+  ResponseEntity<Void> completeStepUpFactorChallenge(
+      @Valid @RequestBody FactorChallengeRequest request,
+      Authentication authentication,
+      HttpServletRequest httpRequest) {
+    UserPrincipal principal = requireUserPrincipal(authentication);
+    UUID userId =
+        factorChallengeService.verify(
+            request.challengeId(),
+            request.bindingId(),
+            request.totpCode(),
+            request.recoveryCode(),
+            httpRequest.getRemoteAddr());
+    if (!userId.equals(principal.userId())) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+    sessionStepUpPort.markSatisfied(principal.sessionId());
+    return ResponseEntity.noContent().build();
+  }
+
   @PostMapping("/refresh")
   ResponseEntity<AccessTokenResponse> refresh(
       @CookieValue(name = "rc_refresh", required = false) String refreshToken) {
@@ -100,6 +141,13 @@ class SessionController {
     return ResponseEntity.noContent()
         .header(HttpHeaders.SET_COOKIE, refreshCookieFactory.clear().toString())
         .build();
+  }
+
+  private UserPrincipal requireUserPrincipal(Authentication authentication) {
+    if (authentication == null || !(authentication.getPrincipal() instanceof UserPrincipal user)) {
+      throw new SessionException(HttpStatus.UNAUTHORIZED, "user authentication required");
+    }
+    return user;
   }
 
   private UUID authenticatedUserId(Authentication authentication) {

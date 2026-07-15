@@ -293,6 +293,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/operator/step-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin in-session StepUp (password; may return FactorChallengeRequired) */
+        post: operations["operatorStepUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/operator/step-up/factor-challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete FactorChallenge for in-session StepUp */
+        post: operations["operatorStepUpFactorChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/operator/factor-challenge": {
         parameters: {
             query?: never;
@@ -337,7 +371,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Begin voluntary Operator TOTP FactorBinding enrollment */
+        /** Begin voluntary Operator TOTP FactorBinding bind */
         post: operations["operatorFactorTotpBegin"];
         delete?: never;
         options?: never;
@@ -354,7 +388,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Complete Operator TOTP FactorBinding enrollment */
+        /** Complete Operator TOTP FactorBinding bind */
         post: operations["operatorFactorTotpComplete"];
         delete?: never;
         options?: never;
@@ -430,6 +464,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sessions/step-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin in-session StepUp (password; may return FactorChallengeRequired) */
+        post: operations["userStepUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/step-up/factor-challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete FactorChallenge for in-session StepUp */
+        post: operations["userStepUpFactorChallenge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sessions/factor-challenge": {
         parameters: {
             query?: never;
@@ -456,7 +524,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Begin voluntary User TOTP FactorBinding enrollment */
+        /** Begin voluntary User TOTP FactorBinding bind */
         post: operations["meFactorTotpBegin"];
         delete?: never;
         options?: never;
@@ -473,7 +541,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Complete User TOTP FactorBinding enrollment */
+        /** Complete User TOTP FactorBinding bind */
         post: operations["meFactorTotpComplete"];
         delete?: never;
         options?: never;
@@ -652,6 +720,9 @@ export interface components {
         };
         RecoveryCodesResponse: {
             recoveryCodes: string[];
+        };
+        StepUpPasswordRequest: {
+            password: string;
         };
         MfaResetRequest: {
             reason: string;
@@ -1215,6 +1286,59 @@ export interface operations {
             };
         };
     };
+    operatorStepUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepUpPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description FactorChallenge required */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FactorChallengeRequiredResponse"];
+                };
+            };
+            /** @description StepUp satisfied (password-only) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    operatorStepUpFactorChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactorChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description StepUp satisfied on current LoginSession */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     operatorFactorChallenge: {
         parameters: {
             query?: never;
@@ -1406,6 +1530,59 @@ export interface operations {
         };
         responses: {
             /** @description Credentials reset */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    userStepUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StepUpPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description FactorChallenge required */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FactorChallengeRequiredResponse"];
+                };
+            };
+            /** @description StepUp satisfied (password-only) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    userStepUpFactorChallenge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FactorChallengeRequest"];
+            };
+        };
+        responses: {
+            /** @description StepUp satisfied on current LoginSession */
             204: {
                 headers: {
                     [name: string]: unknown;

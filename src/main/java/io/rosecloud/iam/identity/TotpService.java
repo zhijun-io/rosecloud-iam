@@ -27,7 +27,7 @@ public class TotpService {
     this.generator = new TimeBasedOneTimePasswordGenerator(Duration.ofSeconds(30), 6);
   }
 
-  public TotpEnrollment newEnrollment(String accountName) {
+  public TotpBindMaterial beginBind(String accountName) {
     byte[] rawSecret = new byte[20];
     secureRandom.nextBytes(rawSecret);
 
@@ -46,7 +46,7 @@ public class TotpService {
             + issuer
             + "&algorithm=SHA1&digits=6&period=30";
 
-    return new TotpEnrollment(base32Secret, otpauthUrl, encryptedSecret);
+    return new TotpBindMaterial(base32Secret, otpauthUrl, encryptedSecret);
   }
 
   public boolean verify(
@@ -69,7 +69,7 @@ public class TotpService {
     }
   }
 
-  public record TotpEnrollment(
+  public record TotpBindMaterial(
       String secret,
       String otpauthUrl,
       TotpSecretCrypto.EncryptedSecret encryptedSecret) {}
