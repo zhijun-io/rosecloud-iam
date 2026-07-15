@@ -35,7 +35,7 @@
 | `task up` / `down` / `logs` / `ps` | Compose 生命周期 |
 | `task run` | 依赖 `up`，然后 `./mvnw -DskipTests spring-boot:run` |
 | `task test` | `./mvnw -B test` |
-| `task typecheck` | 前端 generate + typecheck |
+| `task typecheck` | 前端 generate + typecheck + Storage token guard |
 | `task frontend:dev` | Vite（`/api` 代理） |
 | `task ci` | `test` + `typecheck` |
 
@@ -80,6 +80,27 @@ task frontend:dev
 ```
 
 健康检查：`GET http://127.0.0.1:8080/actuator/health`。
+
+I5 前端 console 默认跑在 `http://127.0.0.1:5173/`，同源访问 `/` 和 `/api`；Vite **不**再重写 `/api` 前缀，而是直接代理到 `http://localhost:8080/api/*`。
+
+补充脚本：
+
+- `cd frontend && npm run smoke:storage`：扫描 `src/`，发现 `localStorage` / `sessionStorage` 就失败
+- `cd frontend && npm run test:e2e`：Playwright **壳层**冒烟（只校验 SPA 标题/导航）；需要先起 Vite，并设置 `E2E_BASE_URL`
+
+注意：当前后端 Operator 与 User 共用 `rc_refresh` cookie 名。手工演示时，建议先跑完 Operator → Tenant，再清状态进入 User / Tenant flow，避免 cookie 语义混淆。明文 HTTP 联调前设置 `rosecloud.iam.cookies.secure=false`。
+
+### I5 console smoke checklist（验收）
+
+在 `task up` + `task run` + `task frontend:dev` 之后，用浏览器走完（邀请 token 从 `outbox_message` 拷贝即可）：
+
+1. **Operator**：CLI 取 setup token → Setup begin/complete → Operator login（AccessToken 仅内存 Session 卡可见）
+2. **Tenant**：Create tenant → 记下 outbox 里的 Owner invite token
+3. **Owner**：Accept invite（begin/complete + TOTP）→ User login → Select tenant → Invite member（`MEMBER`）
+4. **Member**：Clear / Log out → 用 Member invite 走 Accept → User login → Select tenant → Demo：`demo:read` = **200**，`demo:admin` = **403**
+5. Owner/Admin 同页再调 Demo，两边均为 **200**；可选点 Refresh session / Log out
+
+Storage 护栏：`npm run smoke:storage`（`task typecheck` 已含）。
 
 ## Operator setup CLI (I1)
 

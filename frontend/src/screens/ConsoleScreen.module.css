@@ -1,0 +1,159 @@
+.stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.hero {
+  gap: 0.85rem;
+}
+
+.lead {
+  margin: 0;
+  max-width: 58ch;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.cardGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.small {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.resultPanel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.resultGrid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.codeBlock {
+  margin: 0;
+  overflow-x: auto;
+  border-radius: 0.9rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--border-strong);
+  padding: 0.85rem 1rem;
+  color: var(--text-primary);
+}
+
+.inlineCode {
+  font-family:
+    "SFMono-Regular", ui-monospace, "Cascadia Code", "Roboto Mono",
+    Consolas, monospace;
+  font-size: 0.95rem;
+}
+
+.split {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.statusList {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.statusRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.9rem 1rem;
+}
+
+.statusValue {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.statusSuccess {
+  color: var(--success);
+}
+
+.statusError {
+  color: var(--danger);
+}
+
+.emptyState {
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: 1rem;
+  padding: 1rem;
+}
+
+.membershipList {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.membershipButton {
+  width: 100%;
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+  text-align: left;
+}
+
+.membershipActive {
+  border-color: rgba(78, 183, 176, 0.45);
+  box-shadow: 0 0 0 1px rgba(78, 183, 176, 0.18);
+}
+
+.pillRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(78, 183, 176, 0.18);
+  background: rgba(78, 183, 176, 0.1);
+  padding: 0.2rem 0.7rem;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+}
+
+.callout {
+  border-left: 3px solid var(--accent);
+  padding-left: 1rem;
+}
+
+@media (max-width: 720px) {
+  .statusRow {
+    align-items: start;
+    flex-direction: column;
+  }
+}

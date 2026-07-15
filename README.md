@@ -47,12 +47,19 @@ task frontend:dev       # Vite + /api 代理
 
 健康检查：http://127.0.0.1:8080/actuator/health
 
+I5 起前端是一个最小 React console：同源跑在 `http://127.0.0.1:5173/`，Vite 代理 `/api/* -> http://localhost:8080/api/*`。AccessToken 只存在内存里，不写 `localStorage` / `sessionStorage`。
+
 | Task | 作用 |
 | --- | --- |
 | `task test` | 后端测试（Testcontainers） |
-| `task typecheck` | OpenAPI 生成 + 前端 typecheck |
+| `task typecheck` | OpenAPI 生成 + 前端 typecheck + Storage token guard |
 | `task ci` | 本地 CI 门禁 |
 | `task down` | 停 Compose |
+
+额外前端脚本：
+
+- `cd frontend && npm run smoke:storage`：断言源码里没有 Storage API 持久化 token
+- `cd frontend && npm run test:e2e`：Playwright 壳层冒烟（需 Vite + `E2E_BASE_URL`）；完整 Operator→…→200/403 用手搓 checklist，见 [`docs/local-dev.md`](docs/local-dev.md)
 
 Compose 默认凭证与 `application.yml` 对齐：`rosecloud` / `rosecloud`，库名 `rosecloud_iam`，端口 `5432`。
 
