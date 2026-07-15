@@ -52,9 +52,13 @@ task frontend:dev       # Vite + /api 代理
 API 起来后另开终端签发 setup token（成功打印到 stdout；已 ACTIVE 再跑则非零退出）：
 
 ```bash
+task operator:setup-token
+# 等同于：
 ./mvnw -q -DskipTests spring-boot:run \
-  -Dspring-boot.run.mainClass=io.rosecloud.iam.operator.OperatorSetupCli
+  -Dspring-boot.run.main-class=io.rosecloud.iam.operator.OperatorSetupCli
 ```
+
+（Spring Boot 4 必须用 `main-class`；旧的 `mainClass` 会启动 Web 应用并与 `task run` 抢 8080。）
 
 然后走 HTTP：`POST /api/operator/setup/begin` → `complete` → `login`（或前端 Console 的 Operator 流程）。
 

@@ -107,8 +107,12 @@ Storage 护栏：`npm run smoke:storage`（`task typecheck` 已含）。
 一次性离线签发 setup token（成功打印到 stdout；**ACTIVE 后**再跑则非零退出；未完成 bootstrap 可重开）：
 
 ```bash
+# 可与 `task run`（:8080）并存：CLI 不启 Tomcat。
+# Spring Boot 4 要用 kebab-case：main-class（mainClass 会被忽略并抢占 8080）
+task operator:setup-token
+# 或：
 ./mvnw -q -DskipTests spring-boot:run \
-  -Dspring-boot.run.mainClass=io.rosecloud.iam.operator.OperatorSetupCli
+  -Dspring-boot.run.main-class=io.rosecloud.iam.operator.OperatorSetupCli
 ```
 
 然后 HTTP：`POST /api/operator/setup/begin` → `complete` → `login`；JWKS：`GET /api/.well-known/jwks.json`（见 OpenAPI）。

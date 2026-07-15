@@ -61,6 +61,11 @@ tasks:
       - git diff --exit-code -- src/generated/openapi.ts
       - npm run typecheck
 
+  operator:setup-token:
+    desc: Issue Operator setup token (non-web; does not bind :8080)
+    cmds:
+      - ./mvnw -q -DskipTests spring-boot:run -Dspring-boot.run.main-class=io.rosecloud.iam.operator.OperatorSetupCli
+
   run:
     desc: spring-boot:run (depends on up)
     deps: [up]
