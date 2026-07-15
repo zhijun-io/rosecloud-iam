@@ -29,5 +29,7 @@ abstract class AbstractPostgresIntegrationTest {
     registry.add("spring.datasource.password", POSTGRES::getPassword);
     // Assert production cookie shape (Secure) even though MockMvc is not over HTTPS.
     registry.add("rosecloud.iam.cookies.secure", () -> "true");
+    // Keep ITs free of Mailpit; invitation proofs still assert outbox rows.
+    registry.add("rosecloud.iam.mail.enabled", () -> "false");
   }
 }

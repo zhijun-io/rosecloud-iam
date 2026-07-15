@@ -17,6 +17,12 @@ spring:
     url: jdbc:postgresql://localhost:5432/rosecloud_iam
     username: rosecloud
     password: rosecloud
+  mail:
+    host: 127.0.0.1
+    port: 1025
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
 
 management:
   endpoints:
@@ -41,6 +47,11 @@ rosecloud:
       max-failures-before-cooldown: 5
       initial-cooldown: 30s
       max-cooldown: 15m
+    mail:
+      # Local Mailpit: task up, then open http://127.0.0.1:8025/
+      enabled: true
+      from: noreply@rosecloud.local
+      invite-base-url: http://127.0.0.1:5173/
     cookies:
       # Prefer Secure cookies. For plain-HTTP local browsers, override to false.
       secure: true

@@ -39,11 +39,13 @@ RoseCloud 自用的 Workforce IAM：员工登录身份、多租户 Membership、
 
 ```bash
 # 可选：sdk env
-task up                 # Postgres
+task up                 # Postgres + Mailpit
 task run                # API :8080（spring-boot:run）
 # 另开终端：
 task frontend:dev       # Vite + /api 代理
 ```
+
+Mailpit UI：http://127.0.0.1:8025/（SMTP 1025）
 
 健康检查：http://127.0.0.1:8080/actuator/health
 
@@ -69,9 +71,11 @@ task operator:setup-token
 - 明文 HTTP 浏览器联调：设 `rosecloud.iam.cookies.secure=false`（默认 `true`）
 - Operator 与 User 共用 cookie 名；手工演示建议先完成 Operator→Tenant，再清会话进 User 流
 
-### 邮件 / 邀请 token（开发适配器）
+### 邮件 / 邀请 token（Mailpit）
 
-切片交付是 **Outbox 只写**（表 `outbox_message`），不内置 SMTP 出站。本地从 payload 取 `token`（事件如 `tenant.owner_invited` / `tenant.member_invited`）再粘贴到 Accept 屏或 curl。
+`task up` 会起 **Mailpit**（SMTP `1025`，UI `http://127.0.0.1:8025/`）。应用默认 `rosecloud.iam.mail.enabled=true`，Outbox worker 每 ~2s 把 `tenant.owner_invited` / `tenant.member_invited` 发到 Mailpit；邮件正文含邀请 token 与 `#/accept-invite` 链接。
+
+Mailpit 未起时邀请仍写入 `outbox_message`，发信会在日志 warn 后重试。也可继续用 SQL 读 Outbox（见 `docs/local-dev.md`）。
 
 ### 主路径任务
 

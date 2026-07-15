@@ -13,7 +13,8 @@ public record RosecloudIamProperties(
     Duration refreshReuseGrace,
     Duration refreshTokenTtl,
     int maxSessionsPerUser,
-    LoginRateLimit loginRateLimit) {
+    LoginRateLimit loginRateLimit,
+    Mail mail) {
 
   public record Cookies(boolean secure) {}
 
@@ -23,4 +24,6 @@ public record RosecloudIamProperties(
 
   public record LoginRateLimit(
       int maxFailuresBeforeCooldown, Duration initialCooldown, Duration maxCooldown) {}
+
+  public record Mail(boolean enabled, String from, String inviteBaseUrl) {}
 }

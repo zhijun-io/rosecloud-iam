@@ -43,6 +43,26 @@ public class OutboxMessage {
     this.payload = payload;
   }
 
+  public UUID id() {
+    return id;
+  }
+
+  public String eventType() {
+    return eventType;
+  }
+
+  public String payload() {
+    return payload;
+  }
+
+  public Instant publishedAt() {
+    return publishedAt;
+  }
+
+  public void markPublished(Instant at) {
+    this.publishedAt = at;
+  }
+
   @PrePersist
   void onCreate() {
     this.createdAt = Instant.now();

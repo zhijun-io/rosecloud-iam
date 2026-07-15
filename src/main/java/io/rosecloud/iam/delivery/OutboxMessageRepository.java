@@ -1,6 +1,10 @@
 package io.rosecloud.iam.delivery;
 
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface OutboxMessageRepository extends JpaRepository<OutboxMessage, UUID> {}
+public interface OutboxMessageRepository extends JpaRepository<OutboxMessage, UUID> {
+
+  List<OutboxMessage> findTop50ByPublishedAtIsNullOrderByCreatedAtAsc();
+}

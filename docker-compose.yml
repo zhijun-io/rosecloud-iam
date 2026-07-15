@@ -14,9 +14,16 @@ services:
       - rosecloud_iam_pg:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U rosecloud -d rosecloud_iam"]
-      interval: 5s
+      interval: 2s
       timeout: 5s
-      retries: 10
+      retries: 15
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    container_name: rosecloud-iam-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
 volumes:
   rosecloud_iam_pg:

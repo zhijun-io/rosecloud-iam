@@ -9,7 +9,7 @@
 | **JDK 25** | 必须出现在当前 shell 的 `JAVA_HOME` / `PATH`。`task` **不会**切换 JDK。 |
 | Maven Wrapper | 用 `./mvnw`（已钉 **3.9.16**）；不要用系统/SDKMAN 装的 Maven 跑本仓。 |
 | [Task](https://taskfile.dev/) 3.x | 本地入口：`task --list`。 |
-| Docker Compose | Postgres 16（`task up`）。 |
+| Docker Compose | Postgres 16 + Mailpit（`task up`）。 |
 | Node 22 + npm | 前端 `task typecheck` / `task frontend:dev`。 |
 
 可选：[SDKMAN](https://sdkman.io/) + 仓库根 `.sdkmanrc`（见下）。
@@ -92,7 +92,7 @@ I5 前端 console 默认跑在 `http://127.0.0.1:5173/`，同源访问 `/` 和 `
 
 ### I5 console smoke checklist（验收）
 
-在 `task up` + `task run` + `task frontend:dev` 之后，用浏览器走完（邀请 token 从 `outbox_message` 拷贝即可）：
+在 `task up` + `task run` + `task frontend:dev` 之后，用浏览器走完（邀请 token 优先从 Mailpit `http://127.0.0.1:8025/` 复制，或从 `outbox_message`）：
 
 1. **Operator**：CLI 取 setup token → Setup begin/complete → Operator login（AccessToken 仅内存 Session 卡可见）
 2. **Tenant**：Create tenant → 记下 outbox 里的 Owner invite token
@@ -132,7 +132,7 @@ curl -X POST http://127.0.0.1:8080/api/operator/tenants \
   -d '{"name":"Acme","ownerEmail":"owner@example.com"}'
 ```
 
-当前开发态邮件通过 `outbox_message` 可见；`tenant.owner_invited` payload 含一次性邀请 token，方便本地/测试取出。
+当前开发态邮件默认进 **Mailpit**（`http://127.0.0.1:8025/`），亦可直接查 `outbox_message`；`tenant.owner_invited` payload 含一次性邀请 token。
 
 Owner 接受邀请：
 
