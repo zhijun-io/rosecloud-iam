@@ -82,6 +82,13 @@ paths:
                 $ref: "#/components/schemas/AccessTokenResponse"
         "401":
           description: Generic login rejection
+        "429":
+          description: Progressive cooldown after repeated failures for this email + client IP
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds until another attempt may be accepted
   /sessions/refresh:
     post:
       operationId: userRefresh

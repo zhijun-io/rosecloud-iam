@@ -12,11 +12,15 @@ public record RosecloudIamProperties(
     Duration invitationTokenTtl,
     Duration refreshReuseGrace,
     Duration refreshTokenTtl,
-    int maxSessionsPerUser) {
+    int maxSessionsPerUser,
+    LoginRateLimit loginRateLimit) {
 
   public record Cookies(boolean secure) {}
 
   public record Crypto(String totpKeyId, String totpKey) {}
 
   public record Jwt(Duration accessTokenTtl) {}
+
+  public record LoginRateLimit(
+      int maxFailuresBeforeCooldown, Duration initialCooldown, Duration maxCooldown) {}
 }

@@ -16,21 +16,39 @@ public class UserLoginService {
   private final PasswordEncoder passwordEncoder;
   private final TotpService totpService;
   private final AuditService auditService;
+  private final LoginRateLimiter loginRateLimiter;
 
   public UserLoginService(
       IamUserRepository iamUserRepository,
       PasswordEncoder passwordEncoder,
       TotpService totpService,
-      AuditService auditService) {
+      AuditService auditService,
+      LoginRateLimiter loginRateLimiter) {
     this.iamUserRepository = iamUserRepository;
     this.passwordEncoder = passwordEncoder;
     this.totpService = totpService;
     this.auditService = auditService;
+    this.loginRateLimiter = loginRateLimiter;
   }
 
-  /** Validates credentials and returns the authenticated User id. Session creation stays in session. */
+  /**
+   * Validates credentials and returns the authenticated User id. Session creation stays in session.
+   * Applies progressive login cooldown keyed by email + client IP.
+   */
   @Transactional(readOnly = true)
-  public UUID authenticate(String email, String password, String totpCode) {
+  public UUID authenticate(String email, String password, String totpCode, String clientIp) {
+    loginRateLimiter.assertAllowed(email, clientIp);
+    try {
+      UUID userId = verifyCredentials(email, password, totpCode);
+      loginRateLimiter.recordSuccess(email, clientIp);
+      return userId;
+    } catch (UserAuthenticationException exception) {
+      loginRateLimiter.recordFailure(email, clientIp);
+      throw exception;
+    }
+  }
+
+  private UUID verifyCredentials(String email, String password, String totpCode) {
     IamUser user =
         iamUserRepository.findByEmailIgnoreCase(email.trim().toLowerCase(Locale.ROOT)).orElse(null);
 

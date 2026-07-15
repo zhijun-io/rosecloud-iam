@@ -115,6 +115,8 @@ Storage 护栏：`npm run smoke:storage`（`task typecheck` 已含）。
 
 本机明文 HTTP 浏览器联调时，把 `rosecloud.iam.cookies.secure` 设为 `false`（默认 `true`）。
 
+用户登录失败按 **email + client IP** 做渐进冷却（`rosecloud.iam.login-rate-limit.*`，默认 5 次失败后起 30s，上限 15m）；返回 `429` + `Retry-After`，不是永久锁定。测试里可用更短阈值（见 `LoginRateLimitIT`）。
+
 ## Tenant owner invite (I2)
 
 Operator 登录后可用 Bearer AccessToken 调：

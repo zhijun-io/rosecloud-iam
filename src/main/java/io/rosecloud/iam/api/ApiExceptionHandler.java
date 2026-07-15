@@ -1,12 +1,14 @@
 package io.rosecloud.iam.api;
 
 import io.rosecloud.iam.access.AuthorizationException;
+import io.rosecloud.iam.identity.LoginRateLimitedException;
 import io.rosecloud.iam.identity.UserAuthenticationException;
 import io.rosecloud.iam.operator.OperatorAuthenticationException;
 import io.rosecloud.iam.operator.OperatorSetupRejectedException;
 import io.rosecloud.iam.session.SessionException;
 import io.rosecloud.iam.tenancy.TenancyException;
 import java.util.Map;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -32,6 +34,14 @@ class ApiExceptionHandler {
   ResponseEntity<Map<String, String>> handleUserAuthenticationRejected(
       UserAuthenticationException exception) {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(Map.of("error", exception.getMessage()));
+  }
+
+  @ExceptionHandler(LoginRateLimitedException.class)
+  ResponseEntity<Map<String, String>> handleLoginRateLimited(LoginRateLimitedException exception) {
+    long retryAfterSeconds = Math.max(1L, exception.retryAfter().toSeconds());
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .header(HttpHeaders.RETRY_AFTER, Long.toString(retryAfterSeconds))
         .body(Map.of("error", exception.getMessage()));
   }
 

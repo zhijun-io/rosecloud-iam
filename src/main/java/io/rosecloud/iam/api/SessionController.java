@@ -7,6 +7,7 @@ import io.rosecloud.iam.session.SessionException;
 import io.rosecloud.iam.session.UserLoginResult;
 import io.rosecloud.iam.session.UserRefreshResult;
 import io.rosecloud.iam.session.UserSessionService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -36,8 +37,14 @@ class SessionController {
   }
 
   @PostMapping("/login")
-  ResponseEntity<AccessTokenResponse> login(@Valid @RequestBody UserLoginRequest request) {
-    var userId = userLoginService.authenticate(request.email(), request.password(), request.totpCode());
+  ResponseEntity<AccessTokenResponse> login(
+      @Valid @RequestBody UserLoginRequest request, HttpServletRequest httpRequest) {
+    var userId =
+        userLoginService.authenticate(
+            request.email(),
+            request.password(),
+            request.totpCode(),
+            httpRequest.getRemoteAddr());
     UserLoginResult result = userSessionService.createSession(userId);
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, refreshCookieFactory.issue(result.refreshToken()).toString())

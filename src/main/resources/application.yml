@@ -36,6 +36,11 @@ rosecloud:
     refresh-reuse-grace: 5s
     refresh-token-ttl: 30d
     max-sessions-per-user: 10
+    login-rate-limit:
+      # Progressive short cooldown by email + IP (never a permanent lock).
+      max-failures-before-cooldown: 5
+      initial-cooldown: 30s
+      max-cooldown: 15m
     cookies:
       # Prefer Secure cookies. For plain-HTTP local browsers, override to false.
       secure: true
