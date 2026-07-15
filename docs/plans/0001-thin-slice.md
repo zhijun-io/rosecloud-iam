@@ -1,5 +1,7 @@
 # Plan 0001: Thin slice
 
+> **Status:** delivered on `main` (I0–I6; acceptance [`../acceptance/thin-slice-checklist.md`](../acceptance/thin-slice-checklist.md)).
+
 首个可运行纵向切片。完整行为以 [`docs/spec/iam-v1.md`](../spec/iam-v1.md) 为准；本切片**刻意缩小**范围，但仍须遵守已确认的安全不变量（分离 Operator、TOTP 归属 User、枚举防护、审计写路径、Refresh 轮换等）。
 
 ## Goal

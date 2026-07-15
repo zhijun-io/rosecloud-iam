@@ -12,7 +12,7 @@ RoseCloud 自用的 Workforce IAM：员工登录身份、多租户 Membership、
 - PlatformOperator 与 User 会话隔离；离线 CLI 一次性 setup
 - OpenAPI 生成 TypeScript 客户端，CI 防契约漂移
 
-当前交付面是 **Plan 0001 薄切片**（I0–I6）。完整行为以规格为准；切片验收对照 [`docs/acceptance/thin-slice-checklist.md`](docs/acceptance/thin-slice-checklist.md)。
+当前交付面是 **Plan 0001 薄切片（已交付，I0–I6）**。完整行为以规格为准；切片验收对照 [`docs/acceptance/thin-slice-checklist.md`](docs/acceptance/thin-slice-checklist.md)。
 
 ## Stack
 
