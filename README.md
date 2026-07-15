@@ -73,7 +73,7 @@ task operator:setup-token
 
 ### 邮件 / 邀请 token（Mailpit）
 
-`task up` 会起 **Mailpit**（SMTP `1025`，UI `http://127.0.0.1:8025/`）。应用默认 `rosecloud.iam.mail.enabled=true`，Outbox worker 每 ~2s 把 `tenant.owner_invited` / `tenant.member_invited` 发到 Mailpit；邮件正文含邀请 token 与 `#/accept-invite` 链接。
+`task up` 会起 **Mailpit**（SMTP `1025`，UI `http://127.0.0.1:8025/`，容器 `TZ=Asia/Shanghai`）。应用默认 `rosecloud.iam.mail.enabled=true`，Outbox worker 每 ~2s 把 `tenant.owner_invited` / `tenant.member_invited` 发到 Mailpit；邮件正文含邀请 token 与 `#/accept-invite` 链接。
 
 Mailpit 未起时邀请仍写入 `outbox_message`，发信会在日志 warn 后重试。也可继续用 SQL 读 Outbox（见 `docs/local-dev.md`）。
 

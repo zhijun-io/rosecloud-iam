@@ -21,6 +21,9 @@ services:
   mailpit:
     image: axllent/mailpit:v1.27
     container_name: rosecloud-iam-mailpit
+    environment:
+      # Align UI/logs with stack default (Asia/Shanghai). Message Date headers still follow SMTP payloads.
+      TZ: Asia/Shanghai
     ports:
       - "1025:1025"
       - "8025:8025"
