@@ -223,7 +223,7 @@ AccessToken 最多存在 5 分钟陈旧窗口（含权限收回、Tenant/Members
 
 完整 V1 行为以本文为准。首个可交付增量见 `docs/plans/0001-thin-slice.md`：系统 Role（不含自定义 Role）、无完整审计控制台、最小 React 流程；但从第一天起写入 AuditEvent。
 
-**说明：** Plan 0001 薄切片实现仍可能硬编码强制 TOTP；那是切片遗产，**不**回溯修改其 DoD。前进方向以本文与 ADR `0004-pluggable-factors-mfafeature-default-off` 为准。文档变更清单见 `docs/spec/mfa-landable-doc-change-list.md`。
+**说明：** Plan 0001 薄切片 DoD **不**回溯修改。仓库前进方向与实现以本文与 ADR `0004-pluggable-factors-mfafeature-default-off` 为准：**MfaFeature 默认关**，setup / 邀请 / 登录在无 Binding 时仅密码；可选 FactorBinding（TOTP）与 FactorChallenge / RecoveryCode / StepUp / Operator CLI 重置已落地。运行时可插拔 `FactorProvider` 仍为 SPI 草图（`src/prototype/factor-provider`）。变更清单见 `docs/spec/mfa-landable-doc-change-list.md`。
 
 ## 14. FactorBinding inheritance (from thin-slice TOTP)
 
@@ -231,5 +231,5 @@ AccessToken 最多存在 5 分钟陈旧窗口（含权限收回、Tenant/Members
 
 1. 已有**已验证** TOTP 的 Principal ⇒ 恰好一条 kind=`totp` 的 FactorBinding；无需重新扫码。
 2. 既有密文与 `key_id` 继续可用（不因继承强制轮换）。
-3. **Pending** TOTP enroll ≠ FactorBinding。
+3. **Pending** TOTP bind ≠ FactorBinding。
 4. User 与 PlatformOperator 规则相同。

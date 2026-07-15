@@ -134,13 +134,15 @@ sequenceDiagram
 
 - 开发：Vite dev server + 代理 `/api`。
 - 生产：静态资源与 API 由同一站点入口分流（nginx/Caddy 等）；避免跨站 Cookie。
-- 首切片页面：Operator setup/登录、创建 Tenant、接受邀请、绑定 TOTP、登录、选择 Tenant、邀请成员、简单允许/拒绝演示页。
+- 首切片页面：Operator setup/登录、创建 Tenant、接受邀请、User 登录、选择 Tenant、邀请成员、简单允许/拒绝演示页。
+- MFA 相关：Console 支持密码-only 流与 FactorChallenge（TOTP / RecoveryCode）；自愿 bind 走已登录 API（见 OpenAPI `/factors/*`、`/mfa-feature`、`/step-up`）。
 
 ## 9. Operability
 
 - 单实例：滚动发布会有短暂中断；接受。
 - 备份：持续 WAL 归档，RPO ≤ 5 分钟；恢复演练证明 RTO ≤ 1 小时。
-- 引导：离线 CLI 发放一次性 Operator setup token；灾难 MFA 重置同为本地 CLI。
+- 引导：离线 CLI 发放一次性 Operator setup token（`task operator:setup-token`）。
+- 灾难：全部 Operator 丢失 MFA 恢复能力时，本机 CLI 重置指定 Operator（`task operator:mfa-reset`），吊销会话并写审计；不经 HTTP。
 - 审计查询 UI 可后置；写路径不可后置。
 
 ## 10. Related ADRs
@@ -148,3 +150,4 @@ sequenceDiagram
 - [0001 Modular monolith and single PostgreSQL](adr/0001-modular-monolith-single-postgres.md)
 - [0002 Global User and multi-tenant Membership](adr/0002-global-user-multi-tenant-membership.md)
 - [0003 Short Access JWT and rotating refresh](adr/0003-short-access-jwt-rotating-refresh.md)
+- [0004 Pluggable Factors behind MfaFeature (default off)](adr/0004-pluggable-factors-mfafeature-default-off.md)

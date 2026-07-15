@@ -37,6 +37,8 @@
 | `task test` | `./mvnw -B test` |
 | `task typecheck` | 前端 generate + typecheck + Storage token guard |
 | `task frontend:dev` | Vite（`/api` 代理） |
+| `task operator:setup-token` | 签发一次性 Operator setup token |
+| `task operator:mfa-reset` | 本地重置 Operator MFA（`OPERATOR_ID` + `REASON`） |
 | `task ci` | `test` + `typecheck` |
 
 约束：
@@ -143,17 +145,19 @@ curl -X POST http://127.0.0.1:8080/api/invitations/accept/begin \
 
 curl -X POST http://127.0.0.1:8080/api/invitations/accept/complete \
   -H "Content-Type: application/json" \
-  -d '{"token":"<invite-token>","totpCode":"123456"}'
+  -d '{"token":"<invite-token>"}'
 ```
+
+（默认 MfaFeature 关：complete **不需要** `totpCode`。）
 
 ## User sessions (I3)
 
-Owner 接受邀请并激活后，可用邮箱 + 密码 + TOTP 走用户会话：
+Owner 接受邀请并激活后，默认用邮箱 + 密码登录（无 Binding 时不必 TOTP）：
 
 ```bash
 curl -i -X POST http://127.0.0.1:8080/api/sessions/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"owner@example.com","password":"owner invitation password","totpCode":"123456"}'
+  -d '{"email":"owner@example.com","password":"owner invitation password"}'
 ```
 
 响应体返回 UserContext AccessToken；响应头 `Set-Cookie` 写入 `rc_refresh`。之后：
@@ -187,7 +191,7 @@ curl -X POST http://127.0.0.1:8080/api/tenants/<tenant-id>/invitations \
   -d '{"email":"member@example.com","roleCode":"MEMBER"}'
 ```
 
-新用户沿用原来的 begin/complete：
+新用户沿用 begin/complete（默认无 TOTP）：
 
 ```bash
 curl -X POST http://127.0.0.1:8080/api/invitations/accept/begin \
@@ -196,15 +200,15 @@ curl -X POST http://127.0.0.1:8080/api/invitations/accept/begin \
 
 curl -X POST http://127.0.0.1:8080/api/invitations/accept/complete \
   -H "Content-Type: application/json" \
-  -d '{"token":"<invite-token>","totpCode":"123456"}'
+  -d '{"token":"<invite-token>"}'
 ```
 
-已存在且 `ACTIVE` 的用户用 join 证明自己（不会重置 TOTP secret）：
+已存在且 `ACTIVE` 的用户用 join 证明密码（不会重置 FactorBinding）。若该用户 MFA 开且有 Binding，须先走完 `/api/sessions/login` + FactorChallenge 再 join：
 
 ```bash
 curl -X POST http://127.0.0.1:8080/api/invitations/accept/join \
   -H "Content-Type: application/json" \
-  -d '{"token":"<invite-token>","password":"existing user password","totpCode":"123456"}'
+  -d '{"token":"<invite-token>","password":"existing user password"}'
 ```
 
 Tenant RBAC demo seam：
@@ -217,9 +221,11 @@ curl http://127.0.0.1:8080/api/demo/admin \
   -H "Authorization: Bearer <tenant-access-token>"
 ```
 
-`MEMBER` 只有 `demo:read`；`ADMIN` / `OWNER` 还能过 `demo:admin`。另外，TenantContext 访问下面接口会固定返回 `403`，用于明确“全局 TOTP 由更高权限边界处理”：
+`MEMBER` 只有 `demo:read`；`ADMIN` / `OWNER` 还能过 `demo:admin`。另外，TenantContext 访问下面接口会固定返回 `403`，用于明确「全局 FactorBinding / RecoveryCode 不能由租户侧重置」：
 
 ```bash
 curl -X POST http://127.0.0.1:8080/api/tenants/<tenant-id>/users/<user-id>/totp/reset \
   -H "Authorization: Bearer <tenant-access-token>"
 ```
+
+Operator 重置某 User 的全局 MFA：`POST /api/operator/users/{userId}/mfa-reset`（需 StepUp + reason）。
