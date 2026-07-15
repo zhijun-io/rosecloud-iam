@@ -118,3 +118,33 @@ curl -X POST http://127.0.0.1:8080/api/invitations/accept/complete \
   -H "Content-Type: application/json" \
   -d '{"token":"<invite-token>","totpCode":"123456"}'
 ```
+
+## User sessions (I3)
+
+Owner 接受邀请并激活后，可用邮箱 + 密码 + TOTP 走用户会话：
+
+```bash
+curl -i -X POST http://127.0.0.1:8080/api/sessions/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"owner@example.com","password":"owner invitation password","totpCode":"123456"}'
+```
+
+响应体返回 UserContext AccessToken；响应头 `Set-Cookie` 写入 `rc_refresh`。之后：
+
+```bash
+curl http://127.0.0.1:8080/api/me/memberships \
+  -H "Authorization: Bearer <user-access-token>"
+
+curl -X POST http://127.0.0.1:8080/api/me/tenant-context \
+  -H "Authorization: Bearer <user-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"membershipId":"<membership-id>"}'
+
+curl -i -X POST http://127.0.0.1:8080/api/sessions/refresh \
+  --cookie "rc_refresh=<refresh-token>"
+
+curl -i -X POST http://127.0.0.1:8080/api/sessions/logout \
+  --cookie "rc_refresh=<refresh-token>"
+```
+
+`/api/me/tenant-context` 返回 TenantContext AccessToken，并在 claims / body 中带展开后的权限码。`/api/sessions/refresh` 会轮换 refresh cookie；宽限期内并发重放旧 cookie 返回 `409 refresh_in_progress`，宽限期外旧 token 重放会撤销整个 session family。

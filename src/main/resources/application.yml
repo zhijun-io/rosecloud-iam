@@ -33,6 +33,9 @@ server:
 
 rosecloud:
   iam:
+    refresh-reuse-grace: 5s
+    refresh-token-ttl: 30d
+    max-sessions-per-user: 10
     cookies:
       # Prefer Secure cookies. For plain-HTTP local browsers, override to false.
       secure: true

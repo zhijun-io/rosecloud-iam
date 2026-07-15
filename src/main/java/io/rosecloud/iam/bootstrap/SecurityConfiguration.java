@@ -3,6 +3,7 @@ package io.rosecloud.iam.bootstrap;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -13,10 +14,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 class SecurityConfiguration {
 
-  private final OperatorJwtAuthenticationFilter operatorJwtAuthenticationFilter;
+  private final AccessJwtAuthenticationFilter accessJwtAuthenticationFilter;
 
-  SecurityConfiguration(OperatorJwtAuthenticationFilter operatorJwtAuthenticationFilter) {
-    this.operatorJwtAuthenticationFilter = operatorJwtAuthenticationFilter;
+  SecurityConfiguration(AccessJwtAuthenticationFilter accessJwtAuthenticationFilter) {
+    this.accessJwtAuthenticationFilter = accessJwtAuthenticationFilter;
   }
 
   @Bean
@@ -37,14 +38,23 @@ class SecurityConfiguration {
                     .requestMatchers(
                         "/api/operator/setup/**",
                         "/api/operator/login",
+                        "/api/sessions/login",
+                        "/api/sessions/refresh",
+                        "/api/sessions/logout",
                         "/api/invitations/**",
                         "/api/.well-known/jwks.json",
                         "/actuator/health")
                     .permitAll()
+                    .requestMatchers("/api/operator/**")
+                    .hasRole("OPERATOR")
+                    .requestMatchers(HttpMethod.GET, "/api/me/memberships")
+                    .hasRole("USER")
+                    .requestMatchers(HttpMethod.POST, "/api/me/tenant-context")
+                    .hasRole("USER")
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(
-            operatorJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            accessJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
         .build();
   }
 }

@@ -67,6 +67,10 @@ public class IamUser {
     return email;
   }
 
+  public String passwordHash() {
+    return passwordHash;
+  }
+
   public String totpSecretCiphertext() {
     return totpSecretCiphertext;
   }
