@@ -1,4 +1,4 @@
-package io.rosecloud.iam.operator;
+package io.rosecloud.iam.identity;
 
 import com.eatthepath.otp.TimeBasedOneTimePasswordGenerator;
 import io.rosecloud.iam.shared.Base32Encoding;
@@ -13,29 +13,28 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.stereotype.Service;
 
 @Service
-class TotpService {
+public class TotpService {
 
   private static final String HMAC_SHA1 = "HmacSHA1";
   private static final String ISSUER = "RoseCloud IAM";
-  private static final String ACCOUNT = "platform-operator";
 
   private final TotpSecretCrypto totpSecretCrypto;
   private final TimeBasedOneTimePasswordGenerator generator;
   private final SecureRandom secureRandom = new SecureRandom();
 
-  TotpService(TotpSecretCrypto totpSecretCrypto) {
+  public TotpService(TotpSecretCrypto totpSecretCrypto) {
     this.totpSecretCrypto = totpSecretCrypto;
     this.generator = new TimeBasedOneTimePasswordGenerator(Duration.ofSeconds(30), 6);
   }
 
-  TotpEnrollment newEnrollment() {
+  public TotpEnrollment newEnrollment(String accountName) {
     byte[] rawSecret = new byte[20];
     secureRandom.nextBytes(rawSecret);
 
     String base32Secret = Base32Encoding.encode(rawSecret);
     TotpSecretCrypto.EncryptedSecret encryptedSecret = totpSecretCrypto.encrypt(rawSecret);
     String label =
-        URLEncoder.encode(ISSUER + ":" + ACCOUNT, StandardCharsets.UTF_8).replace("+", "%20");
+        URLEncoder.encode(ISSUER + ":" + accountName, StandardCharsets.UTF_8).replace("+", "%20");
     String issuer = URLEncoder.encode(ISSUER, StandardCharsets.UTF_8).replace("+", "%20");
 
     String otpauthUrl =
@@ -50,7 +49,8 @@ class TotpService {
     return new TotpEnrollment(base32Secret, otpauthUrl, encryptedSecret);
   }
 
-  boolean verify(String encryptedSecretKeyId, String encryptedSecretCiphertext, String totpCode) {
+  public boolean verify(
+      String encryptedSecretKeyId, String encryptedSecretCiphertext, String totpCode) {
     byte[] rawSecret = totpSecretCrypto.decrypt(encryptedSecretKeyId, encryptedSecretCiphertext);
     SecretKeySpec secretKey = new SecretKeySpec(rawSecret, HMAC_SHA1);
     Instant now = Instant.now();
@@ -69,7 +69,7 @@ class TotpService {
     }
   }
 
-  record TotpEnrollment(
+  public record TotpEnrollment(
       String secret,
       String otpauthUrl,
       TotpSecretCrypto.EncryptedSecret encryptedSecret) {}

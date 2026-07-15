@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "rosecloud.iam")
 public record RosecloudIamProperties(
-    Cookies cookies, Crypto crypto, Jwt jwt, Duration setupTokenTtl) {
+    Cookies cookies, Crypto crypto, Jwt jwt, Duration setupTokenTtl, Duration invitationTokenTtl) {
 
   public record Cookies(boolean secure) {}
 

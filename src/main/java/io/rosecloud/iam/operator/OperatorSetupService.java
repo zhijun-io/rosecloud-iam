@@ -1,6 +1,7 @@
 package io.rosecloud.iam.operator;
 
 import io.rosecloud.iam.audit.AuditService;
+import io.rosecloud.iam.identity.TotpService;
 import io.rosecloud.iam.session.OperatorLoginResult;
 import io.rosecloud.iam.session.OperatorSessionService;
 import io.rosecloud.iam.shared.Sha256Hasher;
@@ -58,7 +59,7 @@ public class OperatorSetupService {
     // Replace any abandoned PENDING_TOTP row from a previous incomplete bootstrap.
     platformOperatorRepository.deleteAll();
 
-    TotpService.TotpEnrollment enrollment = totpService.newEnrollment();
+    TotpService.TotpEnrollment enrollment = totpService.newEnrollment("platform-operator");
     PlatformOperator operator =
         platformOperatorRepository.save(
             new PlatformOperator(

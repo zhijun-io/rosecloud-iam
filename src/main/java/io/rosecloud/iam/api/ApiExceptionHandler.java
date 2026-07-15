@@ -2,6 +2,7 @@ package io.rosecloud.iam.api;
 
 import io.rosecloud.iam.operator.OperatorAuthenticationException;
 import io.rosecloud.iam.operator.OperatorSetupRejectedException;
+import io.rosecloud.iam.tenancy.TenancyException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,11 @@ class ApiExceptionHandler {
       OperatorAuthenticationException exception) {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
         .body(Map.of("error", exception.getMessage()));
+  }
+
+  @ExceptionHandler(TenancyException.class)
+  ResponseEntity<Map<String, String>> handleTenancyRejected(TenancyException exception) {
+    return ResponseEntity.status(exception.status()).body(Map.of("error", exception.getMessage()));
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -1,5 +1,6 @@
 package io.rosecloud.iam.session;
 
+import io.rosecloud.iam.bootstrap.JwtIssuer;
 import io.rosecloud.iam.shared.Sha256Hasher;
 import java.security.SecureRandom;
 import java.time.Clock;

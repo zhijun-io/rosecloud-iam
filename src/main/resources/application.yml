@@ -42,3 +42,4 @@ rosecloud:
     jwt:
       access-token-ttl: 5m
     setup-token-ttl: 30m
+    invitation-token-ttl: 7d

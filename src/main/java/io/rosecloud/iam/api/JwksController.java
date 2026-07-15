@@ -1,6 +1,6 @@
 package io.rosecloud.iam.api;
 
-import io.rosecloud.iam.session.JwtIssuer;
+import io.rosecloud.iam.bootstrap.JwtIssuer;
 import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

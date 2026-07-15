@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: RoseCloud IAM API
   version: 0.0.1
-  description: Platform operator bootstrap and login API.
+  description: Platform operator bootstrap/login plus tenant owner invitation flows.
 servers:
   - url: /api
 paths:
@@ -58,6 +58,65 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/OperatorLoginResponse"
+  /operator/tenants:
+    post:
+      operationId: createTenant
+      summary: Create a pending tenant and owner invitation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTenantRequest"
+      responses:
+        "201":
+          description: Pending tenant and owner invitation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateTenantResponse"
+        "401":
+          description: Missing or invalid operator access token
+  /invitations/accept/begin:
+    post:
+      operationId: invitationAcceptBegin
+      summary: Begin owner invitation acceptance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationAcceptBeginRequest"
+      responses:
+        "200":
+          description: TOTP enrollment material
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationAcceptBeginResponse"
+        "400":
+          description: Validation failed
+        "401":
+          description: Invitation cannot be accepted
+  /invitations/accept/complete:
+    post:
+      operationId: invitationAcceptComplete
+      summary: Complete owner invitation acceptance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationAcceptCompleteRequest"
+      responses:
+        "204":
+          description: Invitation accepted and tenant activated
+        "400":
+          description: Validation failed
+        "401":
+          description: Invitation cannot be accepted or TOTP invalid
   /.well-known/jwks.json:
     get:
       operationId: jwks
@@ -76,6 +135,11 @@ paths:
                       type: object
                 required: [keys]
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     OperatorSetupBeginRequest:
       type: object
@@ -121,3 +185,51 @@ components:
           type: integer
           format: int64
       required: [accessToken, tokenType, expiresIn]
+    CreateTenantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        ownerEmail:
+          type: string
+          format: email
+      required: [name, ownerEmail]
+    CreateTenantResponse:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        invitationId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING]
+      required: [tenantId, invitationId, status]
+    InvitationAcceptBeginRequest:
+      type: object
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+          minLength: 12
+      required: [token, password]
+    InvitationAcceptBeginResponse:
+      type: object
+      properties:
+        totpSecret:
+          type: string
+        otpauthUrl:
+          type: string
+      required: [totpSecret, otpauthUrl]
+    InvitationAcceptCompleteRequest:
+      type: object
+      properties:
+        token:
+          type: string
+        totpCode:
+          type: string
+          pattern: '^\d{6}$'
+      required: [token, totpCode]

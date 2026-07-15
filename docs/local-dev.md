@@ -93,3 +93,28 @@ task frontend:dev
 然后 HTTP：`POST /api/operator/setup/begin` → `complete` → `login`；JWKS：`GET /api/.well-known/jwks.json`（见 OpenAPI）。
 
 本机明文 HTTP 浏览器联调时，把 `rosecloud.iam.cookies.secure` 设为 `false`（默认 `true`）。
+
+## Tenant owner invite (I2)
+
+Operator 登录后可用 Bearer AccessToken 调：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/operator/tenants \
+  -H "Authorization: Bearer <access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Acme","ownerEmail":"owner@example.com"}'
+```
+
+当前开发态邮件通过 `outbox_message` 可见；`tenant.owner_invited` payload 含一次性邀请 token，方便本地/测试取出。
+
+Owner 接受邀请：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/invitations/accept/begin \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<invite-token>","password":"owner invitation password"}'
+
+curl -X POST http://127.0.0.1:8080/api/invitations/accept/complete \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<invite-token>","totpCode":"123456"}'
+```

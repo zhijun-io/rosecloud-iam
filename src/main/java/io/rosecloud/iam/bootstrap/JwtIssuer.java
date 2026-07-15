@@ -1,24 +1,26 @@
-package io.rosecloud.iam.session;
+package io.rosecloud.iam.bootstrap;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import io.rosecloud.iam.bootstrap.RosecloudIamProperties;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.text.ParseException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -40,7 +42,7 @@ public class JwtIssuer {
     this.keyId = UUID.randomUUID().toString();
   }
 
-  IssuedAccessToken issueOperatorToken(UUID operatorId) {
+  public IssuedAccessToken issueOperatorToken(UUID operatorId) {
     Instant issuedAt = Instant.now(clock);
     Instant expiresAt = issuedAt.plus(properties.jwt().accessTokenTtl());
 
@@ -74,6 +76,31 @@ public class JwtIssuer {
     return Map.of("keys", List.of(jwk.toPublicJWK().toJSONObject()));
   }
 
+  public Optional<UUID> verifyOperatorAccessToken(String serializedToken) {
+    try {
+      SignedJWT jwt = SignedJWT.parse(serializedToken);
+      JWSHeader header = jwt.getHeader();
+      if (!JWSAlgorithm.RS256.equals(header.getAlgorithm()) || !keyId.equals(header.getKeyID())) {
+        return Optional.empty();
+      }
+      if (!jwt.verify(new RSASSAVerifier(publicKey))) {
+        return Optional.empty();
+      }
+
+      JWTClaimsSet claims = jwt.getJWTClaimsSet();
+      Instant now = Instant.now(clock);
+      if (claims.getExpirationTime() == null || claims.getExpirationTime().toInstant().isBefore(now)) {
+        return Optional.empty();
+      }
+      if (!"operator".equals(claims.getStringClaim("typ")) || claims.getSubject() == null) {
+        return Optional.empty();
+      }
+      return Optional.of(UUID.fromString(claims.getSubject()));
+    } catch (ParseException | JOSEException | IllegalArgumentException exception) {
+      return Optional.empty();
+    }
+  }
+
   private static KeyPair generateKeyPair() {
     try {
       KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
@@ -84,5 +111,5 @@ public class JwtIssuer {
     }
   }
 
-  record IssuedAccessToken(String value, long expiresInSeconds) {}
+  public record IssuedAccessToken(String value, long expiresInSeconds) {}
 }
