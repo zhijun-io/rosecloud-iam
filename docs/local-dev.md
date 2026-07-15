@@ -80,3 +80,16 @@ task frontend:dev
 ```
 
 健康检查：`GET http://127.0.0.1:8080/actuator/health`。
+
+## Operator setup CLI (I1)
+
+一次性离线签发 setup token（成功打印到 stdout；**ACTIVE 后**再跑则非零退出；未完成 bootstrap 可重开）：
+
+```bash
+./mvnw -q -DskipTests spring-boot:run \
+  -Dspring-boot.run.mainClass=io.rosecloud.iam.operator.OperatorSetupCli
+```
+
+然后 HTTP：`POST /api/operator/setup/begin` → `complete` → `login`；JWKS：`GET /api/.well-known/jwks.json`（见 OpenAPI）。
+
+本机明文 HTTP 浏览器联调时，把 `rosecloud.iam.cookies.secure` 设为 `false`（默认 `true`）。

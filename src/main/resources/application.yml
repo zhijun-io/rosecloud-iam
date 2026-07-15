@@ -30,3 +30,15 @@ management:
 
 server:
   port: 8080
+
+rosecloud:
+  iam:
+    cookies:
+      # Prefer Secure cookies. For plain-HTTP local browsers, override to false.
+      secure: true
+    crypto:
+      totp-key-id: local
+      totp-key: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+    jwt:
+      access-token-ttl: 5m
+    setup-token-ttl: 30m

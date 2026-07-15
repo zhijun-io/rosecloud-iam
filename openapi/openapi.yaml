@@ -2,22 +2,122 @@ openapi: 3.1.0
 info:
   title: RoseCloud IAM API
   version: 0.0.1
-  description: Placeholder contract for I0 OpenAPI client generation. Paths will be replaced by domain APIs in later tickets.
+  description: Platform operator bootstrap and login API.
 servers:
   - url: /api
 paths:
-  /_skeleton/ping:
-    get:
-      operationId: skeletonPing
-      summary: Placeholder operation so the client generator has a typed surface
+  /operator/setup/begin:
+    post:
+      operationId: operatorSetupBegin
+      summary: Begin platform operator setup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperatorSetupBeginRequest"
       responses:
         "200":
-          description: Placeholder success
+          description: TOTP enrollment material
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorSetupBeginResponse"
+  /operator/setup/complete:
+    post:
+      operationId: operatorSetupComplete
+      summary: Complete platform operator setup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperatorSetupCompleteRequest"
+      responses:
+        "204":
+          description: Operator activated
+  /operator/login:
+    post:
+      operationId: operatorLogin
+      summary: Login as the platform operator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperatorLoginRequest"
+      responses:
+        "200":
+          description: Access token with refresh cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Refresh token cookie named rc_refresh
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OperatorLoginResponse"
+  /.well-known/jwks.json:
+    get:
+      operationId: jwks
+      summary: JWKS for RS256 access token verification
+      responses:
+        "200":
+          description: JWK Set
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  ok:
-                    type: boolean
-                required: [ok]
+                  keys:
+                    type: array
+                    items:
+                      type: object
+                required: [keys]
+components:
+  schemas:
+    OperatorSetupBeginRequest:
+      type: object
+      properties:
+        setupToken:
+          type: string
+        password:
+          type: string
+          minLength: 12
+      required: [setupToken, password]
+    OperatorSetupBeginResponse:
+      type: object
+      properties:
+        totpSecret:
+          type: string
+        otpauthUrl:
+          type: string
+      required: [totpSecret, otpauthUrl]
+    OperatorSetupCompleteRequest:
+      type: object
+      properties:
+        setupToken:
+          type: string
+        totpCode:
+          type: string
+      required: [setupToken, totpCode]
+    OperatorLoginRequest:
+      type: object
+      properties:
+        password:
+          type: string
+        totpCode:
+          type: string
+      required: [password, totpCode]
+    OperatorLoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+        expiresIn:
+          type: integer
+          format: int64
+      required: [accessToken, tokenType, expiresIn]
