@@ -79,6 +79,15 @@ tasks:
     cmds:
       - npm run dev
 
+  prototype:factor-provider:
+    desc: PROTOTYPE TUI — FactorProvider interface shape (throwaway)
+    dir: src/prototype/factor-provider
+    cmds:
+      - rm -rf /tmp/rosecloud-iam-factor-provider-proto
+      - mkdir -p /tmp/rosecloud-iam-factor-provider-proto
+      - javac --release 25 -d /tmp/rosecloud-iam-factor-provider-proto *.java
+      - java -cp /tmp/rosecloud-iam-factor-provider-proto io.rosecloud.iam.prototype.factor.FactorProviderTui
+
   ci:
     desc: Local CI gate — backend tests + frontend typecheck
     cmds:
