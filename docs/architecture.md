@@ -40,8 +40,8 @@ flowchart LR
 io.rosecloud.iam
   bootstrap          # 启动、安全过滤器装配、全局异常
   shared             # 无业务偏好的 ID、错误、时钟、加密原语适配
-  identity           # User、Credential、TOTP、恢复码、密码策略
-  operator           # PlatformOperator、setup token、离线 CLI
+  identity           # User、Credential、Factor/FactorBinding、TOTP、RecoveryCode、密码策略、FactorCatalog/MfaFeature
+  operator           # PlatformOperator、setup token、离线 CLI（与 identity 共用 Factor SPI 形状）
   tenancy            # Tenant、Membership、Invitation
   access             # Role、Permission 目录、绑定与判定
   session            # LoginSession、Refresh 轮换、JWT 签发校验
@@ -64,8 +64,8 @@ io.rosecloud.iam
 
 | 数据 | 所有者模块 |
 | --- | --- |
-| User、密码哈希、TOTP 密文、恢复码哈希 | identity |
-| PlatformOperator 与 setup | operator |
+| User、密码哈希、FactorBinding 凭据（含 TOTP 密文）、RecoveryCode 哈希、MfaFeature | identity |
+| PlatformOperator 与 setup（FactorBinding 与 User 同形） | operator |
 | Tenant、Membership、Invitation | tenancy |
 | Role、Role-Permission、Membership-Role | access |
 | LoginSession、refresh token hash、会话族 | session |
@@ -85,13 +85,15 @@ sequenceDiagram
   participant DB as PostgreSQL
 
   SPA->>API: POST login (email+password)
-  API->>DB: verify password+rate limit
-  API-->>SPA: MFA required or enrollment gate
-  SPA->>API: POST totp verify
+  API->>DB: verify password+rate limit; read MfaFeature
+  alt MfaFeature on and FactorBinding exists
+    API-->>SPA: pending FactorChallenge
+    SPA->>API: POST factor challenge (client-picked binding)
+  end
   API->>DB: create LoginSession (refresh hash)
   API-->>SPA: AccessToken UserContext + Set-Cookie refresh
   SPA->>API: POST select-tenant (membershipId)
-  API->>DB: check Membership ACTIVE + MFA policy
+  API->>DB: check Membership ACTIVE
   API-->>SPA: AccessToken TenantContext (permissions)
   SPA->>API: API call Authorization Bearer
   API->>API: verify JWT signature+exp+permissions

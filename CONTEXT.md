@@ -19,8 +19,8 @@ _Avoid_: SuperAdmin, 超级管理员, system user
 _Avoid_: Subject（口语可用，代码与文档统一用 Principal）
 
 **Credential**:
-证明身份所需的秘密材料，如密码哈希、TOTP 密钥、恢复码。按所有者（User 或 PlatformOperator）归属。
-_Avoid_: 密码记录（过窄）, AuthFactor（过宽）
+证明身份所需的秘密材料，如密码哈希、TOTP 密钥、恢复码。按所有者（User 或 PlatformOperator）归属；挂在 FactorBinding 或密码类登录因子下，本身不是 Factor。
+_Avoid_: 密码记录（过窄）, Factor, FactorBinding, AuthFactor
 
 ### Tenancy
 
@@ -82,6 +82,26 @@ _Avoid_: OrgContext, ActiveTenant
 不可变、追加写的安全与管理事实记录（认证结果、IAM 变更等）。业务接口不可改删。
 _Avoid_: Log, Activity, Trail
 
+**MfaFeature**:
+平台级 MFA 功能开关；默认关闭。关闭时登录不发起 FactorChallenge，已有 FactorBinding 与 Credential 保留不删；开启后 Principal 可自愿创建 FactorBinding。
+_Avoid_: Capability（与 Permission 冲突）, MfaGate, PlatformMfa
+
+**Factor**:
+可插拔的第二因素种类。TOTP 是一种 Factor；密码与恢复码不是 Factor。
+_Avoid_: Method（留给登录方法叙述）, AuthFactor, SecondFactorType, RecoveryCode（作 Factor）
+
+**FactorBinding**:
+某 Principal 对某 Factor 的一次绑定实例；其秘密材料以 Credential 存储。
+_Avoid_: Enrollment, FactorEnrollment, RegisteredFactor, Authenticator
+
+**FactorChallenge**:
+针对某一 FactorBinding（或选定 Factor）的一次验证请求；登录与 StepUp 都可发起。
+_Avoid_: Challenge（单用）, Verification（易与邮箱验证混淆）
+
+**RecoveryCode**:
+一次性备用凭据，属专用恢复路径而非 Factor。仅在已有 FactorBinding 且进入 FactorChallenge（或等价 StepUp 挑战）时可用；成功消耗一条视同本次挑战通过。不出现在 Binding 选择列表中。
+_Avoid_: BackupFactor, RecoveryFactor, Factor（指恢复码时）
+
 **StepUp**:
-对已登录会话执行高风险操作前，要求近期完成密码与 TOTP 再认证。
-_Avoid_: Reauth, Challenge（实现用语）, MFAGate
+对已登录会话执行高风险操作前的再保证策略：满足窗口 5 分钟、绑定 LoginSession。无 FactorBinding 时为密码再认证；有则客户端选定 Binding 后完成 FactorChallenge（通常叠加密码）。登录时的合格再认证同样写入该窗口。恢复码成功消耗亦写入该窗口。
+_Avoid_: Reauth, Challenge（单用）, MFAGate
