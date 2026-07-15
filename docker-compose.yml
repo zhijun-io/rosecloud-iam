@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rosecloud-iam-postgres
+    environment:
+      TZ: Asia/Shanghai
+      PGTZ: Asia/Shanghai
+      POSTGRES_DB: rosecloud_iam
+      POSTGRES_USER: rosecloud
+      POSTGRES_PASSWORD: rosecloud
+    ports:
+      - "5432:5432"
+    volumes:
+      - rosecloud_iam_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rosecloud -d rosecloud_iam"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  rosecloud_iam_pg:

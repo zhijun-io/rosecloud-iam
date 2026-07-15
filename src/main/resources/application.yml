@@ -1,6 +1,8 @@
 spring:
   application:
     name: rosecloud-iam
+  jackson:
+    time-zone: Asia/Shanghai
   jpa:
     open-in-view: false
     hibernate:
@@ -8,7 +10,7 @@ spring:
     properties:
       hibernate:
         jdbc:
-          time_zone: UTC
+          time_zone: Asia/Shanghai
   flyway:
     enabled: true
   datasource:

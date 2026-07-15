@@ -25,7 +25,9 @@ class ApplicationHealthTest {
       new PostgreSQLContainer<>("postgres:16-alpine")
           .withDatabaseName("rosecloud_iam")
           .withUsername("test")
-          .withPassword("test");
+          .withPassword("test")
+          .withEnv("TZ", "Asia/Shanghai")
+          .withEnv("PGTZ", "Asia/Shanghai");
 
   @DynamicPropertySource
   static void datasourceProps(DynamicPropertyRegistry registry) {

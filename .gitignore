@@ -11,3 +11,4 @@ frontend/dist
 frontend/src/generated
 frontend/*.tsbuildinfo
 .vscode
+.env

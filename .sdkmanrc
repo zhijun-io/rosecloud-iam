@@ -1,0 +1,2 @@
+# Optional: `sdk env` in your shell. Taskfile does not use SDKMAN.
+java=25-tem

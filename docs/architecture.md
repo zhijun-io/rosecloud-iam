@@ -19,12 +19,16 @@ flowchart LR
   api -->|Outbox_worker| smtp
 ```
 
-- 仓库：`rosecloud-iam`（本机路径规划：`/Users/zhijunio/github/rosecloud-iam`）。
-- 布局：仓库根为后端；含 `docs/`、`frontend/`。非两个独立 Git 库。
-- 后端：单个 Spring Boot **4.1.0** 应用（Maven Wrapper）、Java 25、包名 `io.rosecloud.iam`。
+- 仓库：`rosecloud-iam`。布局：仓库根为后端；含 `docs/`、`frontend/`。非两个独立 Git 库。
+- 后端：单个 Spring Boot **4.1.0** 应用（Maven Wrapper **3.9.16**）、Java 25、包名 `io.rosecloud.iam`。
 - 前端：React + TypeScript + Vite；语义化 HTML + CSS Modules；无大型组件库。
 - OpenAPI 为契约源；CI 用生成的 TypeScript 客户端防止漂移。
 - 其余依赖小版本跟随 Spring Boot 4.1.0 BOM；非 BOM 依赖建仓时再锁定。
+- **本地开发**（Taskfile、Docker Compose、时区、可选 SDKMAN）：见 [`local-dev.md`](local-dev.md)。要点：
+  - Task（`task run` / `task test`）走当前环境的 JDK + `./mvnw`（`spring-boot:run`）；**不**调用 SDKMAN。
+  - 本机需就绪 **JDK 25**；可选 `.sdkmanrc`（`java=25-tem`）仅供 shell 内 `sdk env`。
+  - Postgres：`docker-compose.yml`（`task up`）；凭据与 `application.yml` 对齐。
+  - 时区默认 **`Asia/Shanghai`**（JVM / Jackson / Hibernate JDBC / Compose / CI）。
 
 ## 2. Modular monolith
 

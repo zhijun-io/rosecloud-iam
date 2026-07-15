@@ -1,0 +1,79 @@
+version: "3"
+
+vars:
+  COMPOSE: docker compose
+
+env:
+  TZ: Asia/Shanghai
+  JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Shanghai
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  up:
+    desc: Start Postgres (Docker Compose)
+    cmds:
+      - "{{.COMPOSE}} up -d --wait"
+
+  down:
+    desc: Stop Compose services
+    cmds:
+      - "{{.COMPOSE}} down"
+
+  logs:
+    desc: Tail Compose logs
+    cmds:
+      - "{{.COMPOSE}} logs -f"
+
+  ps:
+    desc: Show Compose service status
+    cmds:
+      - "{{.COMPOSE}} ps"
+
+  test:
+    desc: Run backend tests
+    cmds:
+      - ./mvnw -B test
+
+  frontend:install:
+    desc: Install frontend dependencies
+    dir: frontend
+    cmds:
+      - npm ci
+
+  generate:
+    desc: Generate TypeScript client from OpenAPI
+    dir: frontend
+    deps: [frontend:install]
+    cmds:
+      - npm run generate:api
+
+  typecheck:
+    desc: Generate API client and typecheck frontend
+    dir: frontend
+    deps: [frontend:install]
+    cmds:
+      - npm run generate:api
+      - npm run typecheck
+
+  run:
+    desc: spring-boot:run (depends on up)
+    deps: [up]
+    cmds:
+      - ./mvnw -DskipTests spring-boot:run
+
+  frontend:dev:
+    desc: Start Vite dev server with /api proxy
+    dir: frontend
+    deps: [frontend:install]
+    cmds:
+      - npm run dev
+
+  ci:
+    desc: Local CI gate — backend tests + frontend typecheck
+    cmds:
+      - task: test
+      - task: typecheck
