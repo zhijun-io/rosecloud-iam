@@ -148,3 +148,51 @@ curl -i -X POST http://127.0.0.1:8080/api/sessions/logout \
 ```
 
 `/api/me/tenant-context` 返回 TenantContext AccessToken，并在 claims / body 中带展开后的权限码。`/api/sessions/refresh` 会轮换 refresh cookie；宽限期内并发重放旧 cookie 返回 `409 refresh_in_progress`，宽限期外旧 token 重放会撤销整个 session family。
+
+## Tenant member invites and RBAC (I4)
+
+拿到 TenantContext AccessToken 后，Owner / Admin 可邀请 `ADMIN` 或 `MEMBER`，开发态 token 仍从 `outbox_message` 取：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/tenants/<tenant-id>/invitations \
+  -H "Authorization: Bearer <tenant-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"member@example.com","roleCode":"MEMBER"}'
+```
+
+新用户沿用原来的 begin/complete：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/invitations/accept/begin \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<invite-token>","password":"member invitation password"}'
+
+curl -X POST http://127.0.0.1:8080/api/invitations/accept/complete \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<invite-token>","totpCode":"123456"}'
+```
+
+已存在且 `ACTIVE` 的用户用 join 证明自己（不会重置 TOTP secret）：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/invitations/accept/join \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<invite-token>","password":"existing user password","totpCode":"123456"}'
+```
+
+Tenant RBAC demo seam：
+
+```bash
+curl http://127.0.0.1:8080/api/demo/read \
+  -H "Authorization: Bearer <tenant-access-token>"
+
+curl http://127.0.0.1:8080/api/demo/admin \
+  -H "Authorization: Bearer <tenant-access-token>"
+```
+
+`MEMBER` 只有 `demo:read`；`ADMIN` / `OWNER` 还能过 `demo:admin`。另外，TenantContext 访问下面接口会固定返回 `403`，用于明确“全局 TOTP 由更高权限边界处理”：
+
+```bash
+curl -X POST http://127.0.0.1:8080/api/tenants/<tenant-id>/users/<user-id>/totp/reset \
+  -H "Authorization: Bearer <tenant-access-token>"
+```

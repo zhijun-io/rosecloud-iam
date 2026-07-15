@@ -27,4 +27,8 @@ public class BuiltinRolePermissions {
   public List<String> permissionsFor(String roleCode) {
     return ROLE_PERMISSIONS.getOrDefault(roleCode, List.of());
   }
+
+  public boolean isKnownRole(String roleCode) {
+    return ROLE_PERMISSIONS.containsKey(roleCode);
+  }
 }

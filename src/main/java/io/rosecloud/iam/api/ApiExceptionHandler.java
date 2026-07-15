@@ -1,5 +1,6 @@
 package io.rosecloud.iam.api;
 
+import io.rosecloud.iam.access.AuthorizationException;
 import io.rosecloud.iam.identity.UserAuthenticationException;
 import io.rosecloud.iam.operator.OperatorAuthenticationException;
 import io.rosecloud.iam.operator.OperatorSetupRejectedException;
@@ -41,6 +42,11 @@ class ApiExceptionHandler {
 
   @ExceptionHandler(TenancyException.class)
   ResponseEntity<Map<String, String>> handleTenancyRejected(TenancyException exception) {
+    return ResponseEntity.status(exception.status()).body(Map.of("error", exception.getMessage()));
+  }
+
+  @ExceptionHandler(AuthorizationException.class)
+  ResponseEntity<Map<String, String>> handleAuthorizationRejected(AuthorizationException exception) {
     return ResponseEntity.status(exception.status()).body(Map.of("error", exception.getMessage()));
   }
 

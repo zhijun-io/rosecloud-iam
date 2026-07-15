@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: RoseCloud IAM API
   version: 0.0.1
-  description: Platform operator bootstrap/login, tenant owner invitation, and user session flows.
+  description: Platform operator bootstrap/login, tenant invitations, tenant RBAC, and user session flows.
 servers:
   - url: /api
 paths:
@@ -170,7 +170,7 @@ paths:
   /invitations/accept/complete:
     post:
       operationId: invitationAcceptComplete
-      summary: Complete owner invitation acceptance
+      summary: Complete new-user invitation acceptance after TOTP enrollment
       requestBody:
         required: true
         content:
@@ -184,6 +184,23 @@ paths:
           description: Validation failed
         "401":
           description: Invitation cannot be accepted or TOTP invalid
+  /invitations/accept/join:
+    post:
+      operationId: invitationAcceptJoin
+      summary: Accept an invitation for an existing ACTIVE user with password and TOTP proof
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvitationAcceptJoinRequest"
+      responses:
+        "204":
+          description: Invitation accepted and membership created
+        "400":
+          description: Validation failed
+        "401":
+          description: Invitation cannot be accepted
   /me/memberships:
     get:
       operationId: listMyMemberships
@@ -224,6 +241,96 @@ paths:
           description: Membership or tenant is not ACTIVE
         "401":
           description: Missing or invalid user access token
+  /tenants/{tenantId}/invitations:
+    post:
+      operationId: createMemberInvitation
+      summary: Invite a tenant member as ADMIN or MEMBER
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMemberInvitationRequest"
+      responses:
+        "201":
+          description: Invitation created and outbox written
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateMemberInvitationResponse"
+        "400":
+          description: Validation failed or roleCode is not assignable
+        "401":
+          description: Missing or invalid bearer token
+        "403":
+          description: Tenant context missing, mismatched, or lacks tenant:invite
+  /tenants/{tenantId}/users/{userId}/totp/reset:
+    post:
+      operationId: rejectTenantTotpReset
+      summary: Reject tenant-context attempts to reset another user's global TOTP
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "403":
+          description: Tenant context cannot reset global TOTP
+        "401":
+          description: Missing or invalid bearer token
+  /demo/read:
+    get:
+      operationId: demoRead
+      summary: Demo endpoint guarded by demo:read
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Permission granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemoPermissionResponse"
+        "401":
+          description: Missing or invalid bearer token
+        "403":
+          description: Missing demo:read
+  /demo/admin:
+    get:
+      operationId: demoAdmin
+      summary: Demo endpoint guarded by demo:admin
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Permission granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemoPermissionResponse"
+        "401":
+          description: Missing or invalid bearer token
+        "403":
+          description: Missing demo:admin
   /.well-known/jwks.json:
     get:
       operationId: jwks
@@ -337,6 +444,23 @@ components:
           type: string
           enum: [PENDING]
       required: [tenantId, invitationId, status]
+    CreateMemberInvitationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        roleCode:
+          type: string
+          enum: [ADMIN, MEMBER]
+      required: [email, roleCode]
+    CreateMemberInvitationResponse:
+      type: object
+      properties:
+        invitationId:
+          type: string
+          format: uuid
+      required: [invitationId]
     InvitationAcceptBeginRequest:
       type: object
       properties:
@@ -363,6 +487,18 @@ components:
           type: string
           pattern: '^\d{6}$'
       required: [token, totpCode]
+    InvitationAcceptJoinRequest:
+      type: object
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+          minLength: 12
+        totpCode:
+          type: string
+          pattern: '^\d{6}$'
+      required: [token, password, totpCode]
     MembershipSummaryResponse:
       type: object
       properties:
@@ -399,3 +535,9 @@ components:
           items:
             type: string
       required: [accessToken, tokenType, expiresIn, permissions]
+    DemoPermissionResponse:
+      type: object
+      properties:
+        permission:
+          type: string
+      required: [permission]

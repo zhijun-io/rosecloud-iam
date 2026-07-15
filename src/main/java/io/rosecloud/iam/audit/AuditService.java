@@ -20,6 +20,8 @@ public class AuditService {
   public static final String USER_REFRESH_REUSE_REVOKED = "user.refresh_reuse_revoked";
   public static final String USER_LOGOUT = "user.logout";
   public static final String USER_TENANT_CONTEXT_SELECTED = "user.tenant_context_selected";
+  public static final String TENANT_MEMBER_INVITED = "tenant.member_invited";
+  public static final String TENANT_INVITATION_ACCEPTED = "tenant.invitation_accepted";
 
   private final AuditEventRepository auditEventRepository;
 

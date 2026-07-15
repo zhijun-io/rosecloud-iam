@@ -19,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockCookie;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -212,6 +213,114 @@ abstract class AbstractIamApiIntegrationTest extends AbstractPostgresIntegration
     return extractJsonField(loginResult.getResponse().getContentAsString(), "accessToken");
   }
 
+  SessionFixture loginUser(String email, String password, String totpSecret) throws Exception {
+    MvcResult loginResult =
+        mockMvc
+            .perform(
+                post("/api/sessions/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                          "email": "%s",
+                          "password": "%s",
+                          "totpCode": "%s"
+                        }
+                        """
+                            .formatted(email, password, currentTotpCode(totpSecret))))
+            .andExpect(status().isOk())
+            .andReturn();
+
+    return new SessionFixture(
+        extractJsonField(loginResult.getResponse().getContentAsString(), "accessToken"),
+        refreshCookie(loginResult));
+  }
+
+  String selectTenantContext(String userAccessToken, java.util.UUID membershipId) throws Exception {
+    MvcResult tenantContextResult =
+        mockMvc
+            .perform(
+                post("/api/me/tenant-context")
+                    .header("Authorization", "Bearer " + userAccessToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                          "membershipId": "%s"
+                        }
+                        """
+                            .formatted(membershipId)))
+            .andExpect(status().isOk())
+            .andReturn();
+    return extractJsonField(tenantContextResult.getResponse().getContentAsString(), "accessToken");
+  }
+
+  SessionFixture refresh(MockCookie refreshCookie) throws Exception {
+    MvcResult refreshResult =
+        mockMvc
+            .perform(post("/api/sessions/refresh").cookie(refreshCookie))
+            .andExpect(status().isOk())
+            .andReturn();
+    return new SessionFixture(
+        extractJsonField(refreshResult.getResponse().getContentAsString(), "accessToken"),
+        refreshCookie(refreshResult));
+  }
+
+  MockCookie refreshCookie(MvcResult result) {
+    String setCookie = result.getResponse().getHeader("Set-Cookie");
+    assertThat(setCookie).isNotBlank().contains("rc_refresh=");
+    int equalsIndex = setCookie.indexOf('=');
+    int separatorIndex = setCookie.indexOf(';', equalsIndex);
+    return new MockCookie("rc_refresh", setCookie.substring(equalsIndex + 1, separatorIndex));
+  }
+
+  int auditCount(String eventType) {
+    Integer count =
+        jdbcTemplate.queryForObject(
+            "select count(*) from audit_event where event_type = ?", Integer.class, eventType);
+    return count == null ? 0 : count;
+  }
+
+  String latestOutboxPayload(java.util.UUID aggregateId, String eventType) {
+    return jdbcTemplate.queryForObject(
+        """
+        select payload
+        from outbox_message
+        where aggregate_id = ?
+          and event_type = ?
+        order by created_at desc
+        limit 1
+        """,
+        String.class,
+        aggregateId,
+        eventType);
+  }
+
+  java.util.UUID userIdByEmail(String email) {
+    return java.util.UUID.fromString(
+        jdbcTemplate.queryForObject(
+            "select id::text from iam_user where email = ?",
+            String.class,
+            email.toLowerCase(java.util.Locale.ROOT)));
+  }
+
+  java.util.UUID latestMembershipIdForEmailAndTenant(String email, java.util.UUID tenantId) {
+    return java.util.UUID.fromString(
+        jdbcTemplate.queryForObject(
+            """
+            select m.id::text
+            from membership m
+            join iam_user u on u.id = m.user_id
+            where u.email = ?
+              and m.tenant_id = ?
+            order by m.created_at desc
+            limit 1
+            """,
+            String.class,
+            email.toLowerCase(java.util.Locale.ROOT),
+            tenantId));
+  }
+
   String issueSetupToken() {
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     int exitCode = operatorSetupCliRunner.run(new PrintStream(output, true, StandardCharsets.UTF_8));
@@ -247,4 +356,6 @@ abstract class AbstractIamApiIntegrationTest extends AbstractPostgresIntegration
       java.util.UUID membershipId,
       String password,
       String email) {}
+
+  record SessionFixture(String accessToken, MockCookie refreshCookie) {}
 }

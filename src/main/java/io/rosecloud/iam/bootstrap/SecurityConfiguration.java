@@ -51,6 +51,8 @@ class SecurityConfiguration {
                     .hasRole("USER")
                     .requestMatchers(HttpMethod.POST, "/api/me/tenant-context")
                     .hasRole("USER")
+                    .requestMatchers("/api/tenants/**", "/api/demo/**")
+                    .hasRole("TENANT")
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(

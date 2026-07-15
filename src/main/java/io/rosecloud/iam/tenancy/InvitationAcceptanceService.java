@@ -75,10 +75,7 @@ public class InvitationAcceptanceService {
   @Transactional
   public void complete(String token, String totpCode) {
     Invitation invitation = requireUsableInvitation(token);
-    Tenant tenant =
-        tenantRepository
-            .findById(invitation.tenantId())
-            .orElseThrow(() -> new IllegalStateException("Invitation tenant missing"));
+    Tenant tenant = requireTenant(invitation);
     IamUser user =
         iamUserRepository
             .findByEmailIgnoreCase(invitation.email())
@@ -91,12 +88,26 @@ public class InvitationAcceptanceService {
     }
 
     user.activate();
-    invitation.markAccepted();
-    tenant.activate();
-    membershipRepository.save(
-        new Membership(tenant.id(), user.id(), invitation.roleCode(), MembershipStatus.ACTIVE));
-    auditService.append(
-        "tenant.owner_activated", user.id(), "owner accepted invitation; tenant active");
+    acceptInvitation(invitation, tenant, user, true);
+  }
+
+  @Transactional
+  public void joinExisting(String token, String password, String totpCode) {
+    Invitation invitation = requireUsableInvitation(token);
+    Tenant tenant = requireTenant(invitation);
+    IamUser user =
+        iamUserRepository
+            .findByEmailIgnoreCase(invitation.email())
+            .filter(candidate -> candidate.status() == UserStatus.ACTIVE)
+            .orElseThrow(
+                () -> new TenancyException(HttpStatus.UNAUTHORIZED, GENERIC_REJECTION));
+
+    if (!passwordEncoder.matches(password, user.passwordHash())
+        || !totpService.verify(user.totpSecretKeyId(), user.totpSecretCiphertext(), totpCode)) {
+      throw new TenancyException(HttpStatus.UNAUTHORIZED, GENERIC_REJECTION);
+    }
+
+    acceptInvitation(invitation, tenant, user, false);
   }
 
   private Invitation requireUsableInvitation(String token) {
@@ -120,6 +131,28 @@ public class InvitationAcceptanceService {
         enrollment.encryptedSecret().ciphertext(),
         enrollment.encryptedSecret().keyId());
     return existing;
+  }
+
+  private Tenant requireTenant(Invitation invitation) {
+    return tenantRepository
+        .findById(invitation.tenantId())
+        .orElseThrow(() -> new IllegalStateException("Invitation tenant missing"));
+  }
+
+  private void acceptInvitation(Invitation invitation, Tenant tenant, IamUser user, boolean activateUser) {
+    invitation.markAccepted();
+    if (tenant.status() == TenantStatus.PENDING) {
+      tenant.activate();
+    }
+    membershipRepository.save(
+        new Membership(tenant.id(), user.id(), invitation.roleCode(), MembershipStatus.ACTIVE));
+    auditService.append(
+        AuditService.TENANT_INVITATION_ACCEPTED,
+        user.id(),
+        "accepted invitation into tenant " + tenant.id() + " as " + invitation.roleCode());
+    if (activateUser) {
+      auditService.append("tenant.owner_activated", user.id(), "owner accepted invitation; tenant active");
+    }
   }
 
   public record BeginAcceptanceResult(String totpSecret, String otpauthUrl) {}
